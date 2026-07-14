@@ -9,23 +9,32 @@ import { db } from "@/lib/db";
 
 export default async function Dashboard() {
   await waitForRequest();
-  const [characters, connection, inventoryCount, recentChanges, recentUnlocks] =
-    await Promise.all([
-      rosterRepository.characters(),
-      db.tacticusConnection.findFirst(),
-      db.inventoryItem.count(),
-      db.characterChange.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        include: { character: true },
-      }),
-      db.characterChange.findMany({
-        where: { field: "isOwned", newValue: "true" },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        include: { character: true },
-      }),
-    ]);
+  const [
+    characters,
+    connection,
+    inventoryCount,
+    recentChanges,
+    recentUnlocks,
+    campaignCount,
+    eventCount,
+  ] = await Promise.all([
+    rosterRepository.characters(),
+    db.tacticusConnection.findFirst(),
+    db.inventoryItem.count(),
+    db.characterChange.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: { character: true },
+    }),
+    db.characterChange.findMany({
+      where: { field: "isOwned", newValue: "true" },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: { character: true },
+    }),
+    db.campaignDefinition.count(),
+    db.eventDefinition.count(),
+  ]);
   const allOwned = characters.filter((c) => c.isOwned);
   const owned = allOwned.filter((c) => c.unitType === "CHARACTER");
   const machines = allOwned.filter(
@@ -108,6 +117,32 @@ export default async function Dashboard() {
                 {connection.upstreamLastUpdatedAt?.toLocaleString() ??
                   "Unknown"}
               </p>
+            </div>
+          </div>
+        </Panel>
+      )}
+      {(campaignCount > 0 || eventCount > 0) && (
+        <Panel className="mt-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="font-mono text-xs tracking-widest text-zinc-500">
+                PROGRESSION INTELLIGENCE
+              </p>
+              <p className="mt-1 text-sm text-zinc-300">
+                {campaignCount} campaign records · {eventCount} legendary-event
+                records
+              </p>
+            </div>
+            <div className="flex gap-4 text-sm">
+              <Link className="text-amber-300" href="/campaigns">
+                Campaigns →
+              </Link>
+              <Link className="text-amber-300" href="/events">
+                Events →
+              </Link>
+              <Link className="text-amber-300" href="/brief">
+                Strategy brief →
+              </Link>
             </div>
           </div>
         </Panel>

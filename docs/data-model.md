@@ -28,3 +28,9 @@ Local-owned fields are `priority`, `investmentStatus`, `notes`, team membership/
 `Character.unitType`, `unitTypeSource`, and `unitTypeConfidence` distinguish characters, Machines of War, and unresolved records with provenance. A manual classification is locally owned and sync-protected. `InventoryItem` adds normalized resource type, subtype, alliance restriction, semantic status, and upstream resource identity while retaining its original category and metadata.
 
 `ReadinessVerification` stores a review status and optional note under a stable opportunity key. It is deliberately separate from computed readiness: verification does not manufacture recipe data or upgrade confidence. Deleting a character cascades its verification records.
+
+## Phase 2D progression intelligence
+
+`CampaignDefinition` and `EventDefinition` contain stable upstream identity and semantic classification. Their one-to-one progress records contain API-owned counters and sanitized structured progress. Their optional plan records contain user-owned status, priority, objective, blocker, strategy notes, target date, and preferred team. Progress and plan changes are separate histories, and API progress changes reference the same `RosterSnapshot` used by roster and inventory synchronization.
+
+Campaign external identity is unique on `externalKey = id::type`, while `externalCampaignId` remains indexed and non-unique because the sanitized fixture proves repeated IDs across variants.

@@ -47,7 +47,7 @@ Optional names, faction, alliance, item metadata, key expiry, requisition orders
 - Other 5xx: handled as temporary API unavailability.
 - Rate-limit headers or quotas: none are documented in the live OpenAPI document, portal, README, or changelog inspected. The client uses manual sync, a 30-second local cooldown, and no polling.
 
-Unknown response fields are retained through validation. Additive inventory containers with amount-bearing records are normalized using their upstream category names. Full progress, campaign/event mapping, and equipment semantics are deliberately postponed to Phase 2C.
+Unknown response fields are retained through validation. Additive inventory containers with amount-bearing records are normalized using their upstream category names. Phase 2D supports the documented campaign attempt records and legendary-event lane/counter fields under the evidence boundaries in [campaign-event-semantics.md](./campaign-event-semantics.md). Completion, stars, event dates, reward thresholds, eligibility, and required units remain explicitly unavailable.
 
 ## Phase 2B field mapping
 

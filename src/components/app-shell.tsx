@@ -7,12 +7,18 @@ import {
   Target,
   Users,
   Gauge,
+  Map,
+  CalendarClock,
+  ClipboardList,
 } from "lucide-react";
 
 const links = [
   ["/", "Dashboard", BarChart3],
   ["/roster", "Roster", Shield],
   ["/readiness", "Readiness", Gauge],
+  ["/campaigns", "Campaigns", Map],
+  ["/events", "Events", CalendarClock],
+  ["/brief", "Brief", ClipboardList],
   ["/priorities", "Priorities", Target],
   ["/teams", "Teams", Users],
   ["/settings", "Data", Database],

@@ -144,6 +144,39 @@ enum VerificationStatus {
   NEEDS_REVIEW
 }
 
+enum CampaignType {
+  STANDARD
+  MIRROR
+  ELITE
+  EVENT
+  UNKNOWN
+}
+
+enum EventType {
+  LEGENDARY_EVENT
+  CAMPAIGN_EVENT
+  QUEST
+  SURVIVAL
+  INCURSION
+  UNKNOWN
+}
+
+enum ProgressSemanticStatus {
+  VERIFIED
+  PARTIAL
+  UNKNOWN
+  UNSUPPORTED
+}
+
+enum PlanStatus {
+  NOT_STARTED
+  ACTIVE
+  BLOCKED
+  PAUSED
+  COMPLETED
+  NEEDS_REVIEW
+}
+
 model Character {
   id                     String                  @id @default(cuid())
   name                   String
@@ -185,13 +218,15 @@ model Character {
 }
 
 model Team {
-  id          String       @id @default(cuid())
-  name        String
-  mode        TeamMode
-  notes       String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  teamMembers TeamMember[]
+  id            String         @id @default(cuid())
+  name          String
+  mode          TeamMode
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  teamMembers   TeamMember[]
+  campaignPlans CampaignPlan[]
+  eventPlans    EventPlan[]
 }
 
 model TeamMember {
@@ -334,20 +369,219 @@ model ReadinessVerification {
 }
 
 model RosterSnapshot {
-  id                    String             @id @default(cuid())
+  id                    String                   @id @default(cuid())
   connectionId          String
   syncRunId             String
-  identity              String             @unique
+  identity              String                   @unique
   upstreamLastUpdatedAt DateTime
   characterCount        Int
   inventoryCount        Int
-  createdAt             DateTime           @default(now())
-  connection            TacticusConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  syncRun               TacticusSyncRun    @relation(fields: [syncRunId], references: [id], onDelete: Cascade)
+  campaignCount         Int                      @default(0)
+  eventCount            Int                      @default(0)
+  createdAt             DateTime                 @default(now())
+  connection            TacticusConnection       @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  syncRun               TacticusSyncRun          @relation(fields: [syncRunId], references: [id], onDelete: Cascade)
   characterChanges      CharacterChange[]
   inventoryChanges      InventoryChange[]
+  campaignChanges       CampaignProgressChange[]
+  eventChanges          EventProgressChange[]
 
   @@index([syncRunId])
+}
+
+model CampaignDefinition {
+  id                   String                   @id @default(cuid())
+  externalKey          String                   @unique
+  externalCampaignId   String
+  displayName          String
+  displayNameSource    String                   @default("API")
+  upstreamType         String
+  normalizedType       CampaignType
+  typeSource           String
+  confidence           String
+  semanticStatus       ProgressSemanticStatus
+  isActive             Boolean?
+  startsAt             DateTime?
+  endsAt               DateTime?
+  upstreamMetadataJson String?
+  lastSyncedAt         DateTime
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  progress             CampaignProgress?
+  plan                 CampaignPlan?
+  changes              CampaignProgressChange[]
+
+  @@index([externalCampaignId])
+  @@index([normalizedType, semanticStatus])
+  @@index([isActive, endsAt])
+  @@index([lastSyncedAt])
+}
+
+model CampaignProgress {
+  id                    String             @id @default(cuid())
+  campaignId            String             @unique
+  battleRecordCount     Int
+  completedNodes        Int?
+  totalNodes            Int?
+  earnedStars           Int?
+  availableStars        Int?
+  currentNode           String?
+  highestUnlockedNode   String?
+  lastCompletedNode     String?
+  rawProgressJson       String
+  upstreamLastUpdatedAt DateTime
+  lastSyncedAt          DateTime
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  campaign              CampaignDefinition @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model CampaignPlan {
+  id               String               @id @default(cuid())
+  campaignId       String               @unique
+  status           PlanStatus           @default(NEEDS_REVIEW)
+  priority         Priority             @default(MEDIUM)
+  currentObjective String?
+  targetObjective  String?
+  blockerSummary   String?
+  strategyNotes    String?
+  preferredTeamId  String?
+  targetDate       DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  campaign         CampaignDefinition   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  preferredTeam    Team?                @relation(fields: [preferredTeamId], references: [id], onDelete: SetNull)
+  changes          CampaignPlanChange[]
+
+  @@index([status, priority])
+  @@index([preferredTeamId])
+}
+
+model CampaignPlanChange {
+  id             String       @id @default(cuid())
+  campaignPlanId String
+  field          String
+  previousValue  String?
+  newValue       String?
+  createdAt      DateTime     @default(now())
+  campaignPlan   CampaignPlan @relation(fields: [campaignPlanId], references: [id], onDelete: Cascade)
+
+  @@index([campaignPlanId, createdAt])
+}
+
+model CampaignProgressChange {
+  id            String             @id @default(cuid())
+  snapshotId    String
+  campaignId    String
+  externalId    String
+  field         String
+  previousValue String?
+  newValue      String?
+  createdAt     DateTime           @default(now())
+  snapshot      RosterSnapshot     @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  campaign      CampaignDefinition @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
+  @@index([snapshotId])
+}
+
+model EventDefinition {
+  id                   String                 @id @default(cuid())
+  externalKey          String                 @unique
+  externalEventId      String
+  displayName          String
+  displayNameSource    String                 @default("API")
+  eventType            EventType
+  typeSource           String
+  confidence           String
+  semanticStatus       ProgressSemanticStatus
+  isActive             Boolean?
+  startsAt             DateTime?
+  endsAt               DateTime?
+  upstreamMetadataJson String?
+  lastSyncedAt         DateTime
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  progress             EventProgress?
+  plan                 EventPlan?
+  changes              EventProgressChange[]
+
+  @@index([externalEventId])
+  @@index([eventType, semanticStatus])
+  @@index([isActive, endsAt])
+  @@index([lastSyncedAt])
+}
+
+model EventProgress {
+  id                       String          @id @default(cuid())
+  eventId                  String          @unique
+  currentPoints            Int?
+  currentCurrency          Int
+  currentShards            Int
+  currentClaimedChestIndex Int
+  laneCount                Int
+  completedMilestones      Int?
+  totalMilestones          Int?
+  currentStage             String?
+  tokensCurrent            Int?
+  tokensMax                Int?
+  nextTokenInSeconds       Int?
+  tokenRegenDelay          Int?
+  rawProgressJson          String
+  upstreamLastUpdatedAt    DateTime
+  lastSyncedAt             DateTime
+  createdAt                DateTime        @default(now())
+  updatedAt                DateTime        @updatedAt
+  event                    EventDefinition @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model EventPlan {
+  id               String            @id @default(cuid())
+  eventId          String            @unique
+  status           PlanStatus        @default(NEEDS_REVIEW)
+  priority         Priority          @default(MEDIUM)
+  currentObjective String?
+  targetObjective  String?
+  blockerSummary   String?
+  strategyNotes    String?
+  preferredTeamId  String?
+  targetDate       DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  event            EventDefinition   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  preferredTeam    Team?             @relation(fields: [preferredTeamId], references: [id], onDelete: SetNull)
+  changes          EventPlanChange[]
+
+  @@index([status, priority])
+  @@index([preferredTeamId])
+}
+
+model EventPlanChange {
+  id            String    @id @default(cuid())
+  eventPlanId   String
+  field         String
+  previousValue String?
+  newValue      String?
+  createdAt     DateTime  @default(now())
+  eventPlan     EventPlan @relation(fields: [eventPlanId], references: [id], onDelete: Cascade)
+
+  @@index([eventPlanId, createdAt])
+}
+
+model EventProgressChange {
+  id            String          @id @default(cuid())
+  snapshotId    String
+  eventId       String
+  externalId    String
+  field         String
+  previousValue String?
+  newValue      String?
+  createdAt     DateTime        @default(now())
+  snapshot      RosterSnapshot  @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  event         EventDefinition @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, createdAt])
+  @@index([snapshotId])
 }
 
 model CharacterChange {

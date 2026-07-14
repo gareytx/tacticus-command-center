@@ -8,6 +8,8 @@ import {
   normalizeInventory,
   previewPayloadSchema,
 } from "@/lib/tacticus/sync-domain";
+import { normalizeCampaigns } from "@/lib/campaigns/domain";
+import { normalizeLegendaryEvents } from "@/lib/events/domain";
 import { describePreview } from "@/services/tacticus-roster-sync.service";
 import { classifyInventory } from "@/lib/readiness/inventory-taxonomy";
 
@@ -24,6 +26,8 @@ const fixturePayload = previewPayloadSchema.parse({
   responseSchemaVersion: fixture.metaData.configHash,
   characters: normalizeCharacters(fixture.player.units),
   inventory: normalizeInventory(fixture.player.inventory),
+  campaigns: normalizeCampaigns(fixture.player.progress.campaigns),
+  events: normalizeLegendaryEvents(fixture.player.progress.legendaryEvents),
 });
 
 test.afterAll(async () => {
@@ -192,6 +196,10 @@ test("fixture preview applies transactionally and updates the dashboard without 
     inventoryRecordsReceived: 324,
     inventoryRecordsToCreate: 324,
     inventoryQuantityChanges: 0,
+    campaignsReceived: 9,
+    campaignsToCreate: 9,
+    eventsReceived: 1,
+    eventsToCreate: 1,
     rejectedRecords: 0,
   });
   await page.route("**/api/integrations/tacticus/preview", (route) =>
@@ -214,9 +222,15 @@ test("fixture preview applies transactionally and updates the dashboard without 
   await expect(page.getByTestId("inventory-sync-changes")).toContainText(
     payload.inventory[0].displayName ?? payload.inventory[0].externalId,
   );
+  await expect(page.getByTestId("progression-sync-changes")).toContainText(
+    "Indomitus",
+  );
   await page.getByRole("button", { name: "Confirm and apply" }).click();
   await expect(page.getByText("59 synchronized characters")).toBeVisible();
   await expect(page.getByText("324 inventory records")).toBeVisible();
+  await expect(
+    page.getByText("9 campaign records · 1 legendary-event records"),
+  ).toBeVisible();
   await page.getByRole("link", { name: "View dashboard" }).click();
   const summary = page.getByTestId("tacticus-sync-summary");
   await expect(summary).toContainText("59");
@@ -233,6 +247,22 @@ test("fixture preview applies transactionally and updates the dashboard without 
     59,
   );
   expect(await db.inventoryItem.count()).toBe(324);
+  expect(await db.campaignDefinition.count()).toBe(9);
+  expect(await db.eventDefinition.count()).toBe(1);
+  expect(
+    await db.campaignDefinition.count({
+      where: { externalCampaignId: "eventCampaign6" },
+    }),
+  ).toBe(2);
+  expect(
+    (await db.campaignProgress.findMany()).reduce(
+      (total, item) => total + item.battleRecordCount,
+      0,
+    ),
+  ).toBe(
+    payload.campaigns.reduce((total, item) => total + item.battles.length, 0),
+  );
+  expect((await db.eventProgress.findFirstOrThrow()).laneCount).toBe(3);
   const storedInventory = await db.inventoryItem.findMany();
   const storedById = new Map(
     storedInventory.map((item) => [item.externalInventoryId, item]),
@@ -296,6 +326,28 @@ test("fixture preview applies transactionally and updates the dashboard without 
       note: "Local test evidence",
     },
   });
+  const campaignEvent = await db.campaignDefinition.findFirstOrThrow({
+    where: { externalCampaignId: "eventCampaign6" },
+  });
+  await db.campaignDefinition.update({
+    where: { id: campaignEvent.id },
+    data: {
+      displayName: "My local campaign label",
+      displayNameSource: "MANUAL",
+      normalizedType: "EVENT",
+      typeSource: "MANUAL",
+      confidence: "MANUAL",
+    },
+  });
+  const campaignPlan = await db.campaignPlan.create({
+    data: {
+      campaignId: campaignEvent.id,
+      status: "ACTIVE",
+      priority: "CRITICAL",
+      strategyNotes: "Preserve this campaign strategy",
+      preferredTeamId: localTeam.id,
+    },
+  });
 
   const repeatToken = "fixture-repeat-token-" + "b".repeat(32);
   await db.tacticusSyncPreview.create({
@@ -316,6 +368,23 @@ test("fixture preview applies transactionally and updates the dashboard without 
     59,
   );
   expect(await db.inventoryItem.count()).toBe(324);
+  expect(await db.campaignDefinition.count()).toBe(9);
+  expect(await db.eventDefinition.count()).toBe(1);
+  expect(
+    await db.campaignDefinition.findUnique({ where: { id: campaignEvent.id } }),
+  ).toMatchObject({
+    displayName: "My local campaign label",
+    displayNameSource: "MANUAL",
+    typeSource: "MANUAL",
+  });
+  expect(
+    await db.campaignPlan.findUnique({ where: { id: campaignPlan.id } }),
+  ).toMatchObject({
+    status: "ACTIVE",
+    priority: "CRITICAL",
+    strategyNotes: "Preserve this campaign strategy",
+    preferredTeamId: localTeam.id,
+  });
   expect(
     (await db.inventoryItem.findMany()).reduce(
       (total, item) => total + item.quantity,
@@ -354,6 +423,23 @@ test("fixture preview applies transactionally and updates the dashboard without 
     status: "VERIFIED",
     note: "Local test evidence",
   });
+  await page.goto("/campaigns");
+  await expect(
+    page.getByRole("heading", { name: "Campaign intelligence" }),
+  ).toBeVisible();
+  await page.goto(`/campaigns/${campaignEvent.id}`);
+  await expect(page.getByText("COMPLETION", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Unknown", { exact: true }).first(),
+  ).toBeVisible();
+  await page.goto("/events");
+  await expect(
+    page.getByRole("heading", { name: "Event intelligence" }),
+  ).toBeVisible();
+  await page.goto("/brief");
+  await expect(
+    page.getByRole("heading", { name: "What should I work on next?" }),
+  ).toBeVisible();
 });
 
 test("a database failure rolls the entire apply transaction back", async ({

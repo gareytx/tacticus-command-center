@@ -20,6 +20,11 @@ import {
 import type { TacticusApiClient } from "@/lib/tacticus/types";
 import { classifyUnit } from "@/lib/readiness/unit-classification";
 import { classifyInventory } from "@/lib/readiness/inventory-taxonomy";
+import { normalizeCampaigns } from "@/lib/campaigns/domain";
+import {
+  eventProgressSummary,
+  normalizeLegendaryEvents,
+} from "@/lib/events/domain";
 
 const PREVIEW_TTL_MS = 10 * 60 * 1000;
 const SEEDED_EXTERNAL_IDS: Record<string, string> = {
@@ -96,6 +101,8 @@ export function describePreview(
   payload: PreviewPayload,
   characters: ExistingCharacter[],
   inventory: ExistingInventory[],
+  campaigns: Array<{ id: string; externalKey: string }> = [],
+  events: Array<{ id: string; externalKey: string }> = [],
 ) {
   const byExternal = new Map(
     characters
@@ -179,6 +186,34 @@ export function describePreview(
   });
   const count = (items: Array<{ status: string }>, status: string) =>
     items.filter((item) => item.status === status).length;
+  const describeDefinitions = <
+    T extends { externalKey: string; displayName: string },
+  >(
+    incoming: T[],
+    existing: Array<{ id: string; externalKey: string }>,
+  ) => {
+    const byKey = new Map(existing.map((item) => [item.externalKey, item]));
+    const seen = new Set<string>();
+    return incoming.map((item) => {
+      if (seen.has(item.externalKey))
+        return {
+          externalKey: item.externalKey,
+          name: item.displayName,
+          status: "REJECTED" as const,
+          reason: "Duplicate persistence key",
+        };
+      seen.add(item.externalKey);
+      const match = byKey.get(item.externalKey);
+      return {
+        externalKey: item.externalKey,
+        name: item.displayName,
+        id: match?.id ?? null,
+        status: match ? ("UPDATE" as const) : ("CREATE" as const),
+      };
+    });
+  };
+  const campaignChanges = describeDefinitions(payload.campaigns, campaigns);
+  const eventChanges = describeDefinitions(payload.events, events);
   return {
     summary: {
       charactersReceived: payload.characters.length,
@@ -191,12 +226,20 @@ export function describePreview(
       inventoryQuantityChanges:
         count(inventoryChanges, "INCREASE") +
         count(inventoryChanges, "DECREASE"),
+      campaignsReceived: payload.campaigns.length,
+      campaignsToCreate: count(campaignChanges, "CREATE"),
+      eventsReceived: payload.events.length,
+      eventsToCreate: count(eventChanges, "CREATE"),
       rejectedRecords:
         count(characterChanges, "REJECTED") +
-        count(inventoryChanges, "REJECTED"),
+        count(inventoryChanges, "REJECTED") +
+        count(campaignChanges, "REJECTED") +
+        count(eventChanges, "REJECTED"),
     },
     characterChanges,
     inventoryChanges,
+    campaignChanges,
+    eventChanges,
   };
 }
 
@@ -243,12 +286,36 @@ export async function previewTacticusRosterSync(
     responseSchemaVersion: summary.responseSchemaVersion,
     characters: normalizeCharacters(state.player.units),
     inventory: normalizeInventory(state.player.inventory),
+    campaigns: normalizeCampaigns(
+      Array.isArray(
+        (state.player.progress as Record<string, unknown>).campaigns,
+      )
+        ? ((state.player.progress as Record<string, unknown>)
+            .campaigns as unknown[])
+        : [],
+    ),
+    events: normalizeLegendaryEvents(
+      Array.isArray(
+        (state.player.progress as Record<string, unknown>).legendaryEvents,
+      )
+        ? ((state.player.progress as Record<string, unknown>)
+            .legendaryEvents as unknown[])
+        : [],
+    ),
   });
-  const [characters, inventory] = await Promise.all([
+  const [characters, inventory, campaigns, events] = await Promise.all([
     db.character.findMany(),
     db.inventoryItem.findMany(),
+    db.campaignDefinition.findMany({ select: { id: true, externalKey: true } }),
+    db.eventDefinition.findMany({ select: { id: true, externalKey: true } }),
   ]);
-  const preview = describePreview(payload, characters, inventory);
+  const preview = describePreview(
+    payload,
+    characters,
+    inventory,
+    campaigns,
+    events,
+  );
   const previewToken = randomBytes(32).toString("base64url");
   await db.$transaction([
     db.tacticusSyncPreview.deleteMany({
@@ -286,11 +353,19 @@ export async function applyTacticusRosterSync(
   });
   if (!preview) throw new TacticusError("PREVIEW_EXPIRED");
   const payload = validateStoredPreview(preview, now);
-  const [characters, inventory] = await Promise.all([
+  const [characters, inventory, campaigns, events] = await Promise.all([
     db.character.findMany(),
     db.inventoryItem.findMany(),
+    db.campaignDefinition.findMany({ select: { id: true, externalKey: true } }),
+    db.eventDefinition.findMany({ select: { id: true, externalKey: true } }),
   ]);
-  const described = describePreview(payload, characters, inventory);
+  const described = describePreview(
+    payload,
+    characters,
+    inventory,
+    campaigns,
+    events,
+  );
   if (described.summary.rejectedRecords)
     throw new TacticusError("MALFORMED_RESPONSE");
   const result = await db.$transaction(async (tx) => {
@@ -301,7 +376,11 @@ export async function applyTacticusRosterSync(
         startedAt: now,
         upstreamLastUpdatedAt: new Date(payload.upstreamLastUpdatedAt),
         responseSchemaVersion: payload.responseSchemaVersion,
-        recordsReceived: payload.characters.length + payload.inventory.length,
+        recordsReceived:
+          payload.characters.length +
+          payload.inventory.length +
+          payload.campaigns.length +
+          payload.events.length,
       },
     });
     const snapshot = await tx.rosterSnapshot.create({
@@ -312,10 +391,14 @@ export async function applyTacticusRosterSync(
         upstreamLastUpdatedAt: new Date(payload.upstreamLastUpdatedAt),
         characterCount: payload.characters.length,
         inventoryCount: payload.inventory.length,
+        campaignCount: payload.campaigns.length,
+        eventCount: payload.events.length,
       },
     });
     let appliedCharacters = 0,
-      appliedInventory = 0;
+      appliedInventory = 0,
+      appliedCampaigns = 0,
+      appliedEvents = 0;
     for (const item of described.characterChanges) {
       if (item.status === "UNMATCHED") continue;
       const incoming = payload.characters.find(
@@ -406,6 +489,171 @@ export async function applyTacticusRosterSync(
         appliedInventory++;
       }
     }
+    for (const incoming of payload.campaigns) {
+      const existing = await tx.campaignDefinition.findUnique({
+        where: { externalKey: incoming.externalKey },
+        include: { progress: true },
+      });
+      const definition = await tx.campaignDefinition.upsert({
+        where: { externalKey: incoming.externalKey },
+        create: {
+          externalKey: incoming.externalKey,
+          externalCampaignId: incoming.externalCampaignId,
+          displayName: incoming.displayName,
+          upstreamType: incoming.upstreamType,
+          normalizedType: incoming.normalizedType,
+          typeSource: incoming.typeSource,
+          confidence: incoming.confidence,
+          semanticStatus: incoming.semanticStatus,
+          isActive: incoming.isActive,
+          startsAt: incoming.startsAt ? new Date(incoming.startsAt) : null,
+          endsAt: incoming.endsAt ? new Date(incoming.endsAt) : null,
+          upstreamMetadataJson: JSON.stringify(incoming.metadata),
+          lastSyncedAt: now,
+        },
+        update: {
+          externalCampaignId: incoming.externalCampaignId,
+          upstreamType: incoming.upstreamType,
+          ...(existing?.displayNameSource === "MANUAL"
+            ? {}
+            : { displayName: incoming.displayName }),
+          ...(existing?.typeSource === "MANUAL"
+            ? {}
+            : {
+                normalizedType: incoming.normalizedType,
+                typeSource: incoming.typeSource,
+                confidence: incoming.confidence,
+              }),
+          semanticStatus: incoming.semanticStatus,
+          isActive: incoming.isActive,
+          startsAt: incoming.startsAt ? new Date(incoming.startsAt) : null,
+          endsAt: incoming.endsAt ? new Date(incoming.endsAt) : null,
+          upstreamMetadataJson: JSON.stringify(incoming.metadata),
+          lastSyncedAt: now,
+        },
+      });
+      const progressData = {
+        battleRecordCount: incoming.battles.length,
+        completedNodes: null,
+        totalNodes: null,
+        earnedStars: null,
+        availableStars: null,
+        currentNode: null,
+        highestUnlockedNode: null,
+        lastCompletedNode: null,
+        rawProgressJson: JSON.stringify(incoming.battles),
+        upstreamLastUpdatedAt: new Date(payload.upstreamLastUpdatedAt),
+        lastSyncedAt: now,
+      };
+      await tx.campaignProgress.upsert({
+        where: { campaignId: definition.id },
+        create: { campaignId: definition.id, ...progressData },
+        update: progressData,
+      });
+      const previous = existing?.progress;
+      for (const change of changes(
+        previous as unknown as Record<string, unknown> | null,
+        {
+          battleRecordCount: incoming.battles.length,
+          rawProgressJson: JSON.stringify(incoming.battles),
+        },
+      ))
+        await tx.campaignProgressChange.create({
+          data: {
+            snapshotId: snapshot.id,
+            campaignId: definition.id,
+            externalId: incoming.externalKey,
+            ...change,
+          },
+        });
+      if (
+        !existing ||
+        previous?.rawProgressJson !== JSON.stringify(incoming.battles)
+      )
+        appliedCampaigns++;
+    }
+    for (const incoming of payload.events) {
+      const existing = await tx.eventDefinition.findUnique({
+        where: { externalKey: incoming.externalKey },
+        include: { progress: true },
+      });
+      const definition = await tx.eventDefinition.upsert({
+        where: { externalKey: incoming.externalKey },
+        create: {
+          externalKey: incoming.externalKey,
+          externalEventId: incoming.externalEventId,
+          displayName: incoming.displayName,
+          eventType: incoming.eventType,
+          typeSource: incoming.typeSource,
+          confidence: incoming.confidence,
+          semanticStatus: incoming.semanticStatus,
+          isActive: incoming.isActive,
+          startsAt: null,
+          endsAt: null,
+          upstreamMetadataJson: JSON.stringify(incoming.metadata),
+          lastSyncedAt: now,
+        },
+        update: {
+          externalEventId: incoming.externalEventId,
+          ...(existing?.displayNameSource === "MANUAL"
+            ? {}
+            : { displayName: incoming.displayName }),
+          ...(existing?.typeSource === "MANUAL"
+            ? {}
+            : {
+                eventType: incoming.eventType,
+                typeSource: incoming.typeSource,
+                confidence: incoming.confidence,
+              }),
+          semanticStatus: incoming.semanticStatus,
+          isActive: incoming.isActive,
+          upstreamMetadataJson: JSON.stringify(incoming.metadata),
+          lastSyncedAt: now,
+        },
+      });
+      const summary = eventProgressSummary(incoming);
+      const progressData = {
+        ...summary,
+        completedMilestones: null,
+        totalMilestones: null,
+        rawProgressJson: JSON.stringify({
+          lanes: incoming.lanes,
+          currentEvent: incoming.currentEvent,
+        }),
+        upstreamLastUpdatedAt: new Date(payload.upstreamLastUpdatedAt),
+        lastSyncedAt: now,
+      };
+      await tx.eventProgress.upsert({
+        where: { eventId: definition.id },
+        create: { eventId: definition.id, ...progressData },
+        update: progressData,
+      });
+      const previous = existing?.progress;
+      for (const change of changes(
+        previous as unknown as Record<string, unknown> | null,
+        {
+          currentPoints: summary.currentPoints,
+          currentCurrency: summary.currentCurrency,
+          currentShards: summary.currentShards,
+          currentClaimedChestIndex: summary.currentClaimedChestIndex,
+          laneCount: summary.laneCount,
+          rawProgressJson: progressData.rawProgressJson,
+        },
+      ))
+        await tx.eventProgressChange.create({
+          data: {
+            snapshotId: snapshot.id,
+            eventId: definition.id,
+            externalId: incoming.externalKey,
+            ...change,
+          },
+        });
+      if (
+        !existing ||
+        previous?.rawProgressJson !== progressData.rawProgressJson
+      )
+        appliedEvents++;
+    }
     await tx.tacticusSyncRun.update({
       where: { id: run.id },
       data: { status: "SUCCEEDED", completedAt: now },
@@ -422,7 +670,13 @@ export async function applyTacticusRosterSync(
       },
     });
     await tx.tacticusSyncPreview.delete({ where: { id: preview.id } });
-    return { snapshotId: snapshot.id, appliedCharacters, appliedInventory };
+    return {
+      snapshotId: snapshot.id,
+      appliedCharacters,
+      appliedInventory,
+      appliedCampaigns,
+      appliedEvents,
+    };
   });
   return {
     status: "SUCCEEDED" as const,
@@ -432,6 +686,8 @@ export async function applyTacticusRosterSync(
       where: { syncSource: "TACTICUS" },
     }),
     inventoryCount: await db.inventoryItem.count(),
+    campaignCount: await db.campaignDefinition.count(),
+    eventCount: await db.eventDefinition.count(),
     unmatched: described.summary.charactersUnmatched,
   };
 }

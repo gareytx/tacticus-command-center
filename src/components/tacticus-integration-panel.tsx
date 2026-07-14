@@ -54,6 +54,8 @@ type SyncResult = {
   rosterCount?: number;
   inventoryCount?: number;
   synchronizedCharacterCount?: number;
+  campaignCount?: number;
+  eventCount?: number;
 };
 type RosterPreview = {
   previewToken: string;
@@ -77,6 +79,8 @@ type RosterPreview = {
     previousQuantity: number | null;
     newQuantity: number;
   }>;
+  campaignChanges: Array<{ externalKey: string; name: string; status: string }>;
+  eventChanges: Array<{ externalKey: string; name: string; status: string }>;
 };
 
 function formatDate(value: string | null) {
@@ -557,6 +561,35 @@ export function TacticusIntegrationPanel() {
                   </div>
                 ))}
             </div>
+            <h4 className="mt-5 font-semibold">Campaign and event changes</h4>
+            <div
+              data-testid="progression-sync-changes"
+              className="mt-2 max-h-72 divide-y divide-white/10 overflow-auto"
+            >
+              {[
+                ...rosterPreview.campaignChanges.map((item) => ({
+                  ...item,
+                  kind: "Campaign",
+                })),
+                ...rosterPreview.eventChanges.map((item) => ({
+                  ...item,
+                  kind: "Event",
+                })),
+              ]
+                .filter((item) => filter === "ALL" || item.status === filter)
+                .map((item) => (
+                  <div
+                    className="flex justify-between gap-3 py-3 text-sm"
+                    key={`${item.kind}-${item.externalKey}`}
+                  >
+                    <span>
+                      {item.name}
+                      <small className="ml-2 text-zinc-600">{item.kind}</small>
+                    </span>
+                    <Badge value={item.status} />
+                  </div>
+                ))}
+            </div>
           </Panel>
         )}
         {syncResult && (
@@ -578,6 +611,13 @@ export function TacticusIntegrationPanel() {
                   {syncResult.inventoryCount ??
                     syncResult.inventoryRecordCount}{" "}
                   inventory records
+                  {syncResult.campaignCount !== undefined && (
+                    <>
+                      <br />
+                      {syncResult.campaignCount} campaign records ·{" "}
+                      {syncResult.eventCount ?? 0} legendary-event records
+                    </>
+                  )}
                   {syncResult.upstreamLastUpdatedAt && (
                     <>
                       <br />

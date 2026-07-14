@@ -40,7 +40,7 @@ The fixture contributes `id`, `name`, `faction`, `grandAlliance`, `xpLevel`, `ra
 
 ## Phase boundaries
 
-Phase 2B covers roster and inventory only. Campaign assignments derived from upstream progress, campaign completion, legendary events, guild data, and background polling remain intentionally unsupported.
+Phase 2B covers roster and inventory. Phase 2D adds campaign definitions/progress and legendary-event definitions/progress to the same preview and transaction. Collision-safe campaign keys preserve repeated upstream IDs with distinct types. API-owned progress changes are attached to the roster snapshot; local plans, teams, names, classifications, notes, priorities, blockers, and target dates are never overwritten. Campaign completion, stars, event dates, eligibility, guild data, and background polling remain unsupported.
 
 ## Phase 2C enrichment
 

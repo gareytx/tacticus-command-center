@@ -5,6 +5,8 @@ import {
   normalizeInventory,
   previewPayloadSchema,
 } from "@/lib/tacticus/sync-domain";
+import { normalizeCampaigns } from "@/lib/campaigns/domain";
+import { normalizeLegendaryEvents } from "@/lib/events/domain";
 import {
   describePreview,
   validateStoredPreview,
@@ -21,6 +23,8 @@ const payload = previewPayloadSchema.parse({
   responseSchemaVersion: fixture.metaData.configHash,
   characters: normalizeCharacters(fixture.player.units),
   inventory: normalizeInventory(fixture.player.inventory),
+  campaigns: normalizeCampaigns(fixture.player.progress.campaigns),
+  events: normalizeLegendaryEvents(fixture.player.progress.legendaryEvents),
 });
 
 function character(overrides: Record<string, unknown> = {}) {

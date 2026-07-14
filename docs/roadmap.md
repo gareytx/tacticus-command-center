@@ -48,4 +48,4 @@
 - Public deployment
 - Community strategy data
 
-Future phases should preserve manual correction, source transparency, and explicit user control over imported or inferred values. Phase 2C will address campaign and legendary-event progress mapping. Guild scopes and background polling remain out of scope.
+Future phases should preserve manual correction, source transparency, and explicit user control over imported or inferred values. Phase 2D provides campaign and legendary-event progress mapping, local plans, and the daily strategy brief without inventing completion or event rules. Guild scopes and background polling remain out of scope.

@@ -19,7 +19,9 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "db:backfill-readiness": "tsx scripts/backfill-phase-2c.ts",
-    "audit:inventory": "tsx scripts/audit-inventory-reconciliation.ts"
+    "db:backfill-phase-2d": "tsx scripts/backfill-phase-2d.ts",
+    "audit:inventory": "tsx scripts/audit-inventory-reconciliation.ts",
+    "audit:phase2d": "tsx scripts/audit-phase-2d.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",

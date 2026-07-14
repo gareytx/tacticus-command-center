@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { campaignSyncSchema } from "@/lib/campaigns/domain";
+import { eventSyncSchema } from "@/lib/events/domain";
 
 export const characterSyncSchema = z
   .object({
@@ -43,6 +45,8 @@ export const previewPayloadSchema = z
     responseSchemaVersion: z.string().min(1),
     characters: z.array(characterSyncSchema),
     inventory: z.array(inventorySyncSchema),
+    campaigns: z.array(campaignSyncSchema).default([]),
+    events: z.array(eventSyncSchema).default([]),
   })
   .passthrough();
 

@@ -57,10 +57,10 @@ Security limitations: this release relies on localhost and same-origin checks be
 
 ## Current limitations
 
-This release is single-user and local only. It does not include authentication, cloud sync, public sharing, campaign/event synchronization, copyrighted game artwork, screenshot extraction, or automated recommendations. Portrait URLs are reserved for user-supplied or properly licensed images.
+This release is single-user and local only. It does not include authentication, cloud sync, public sharing, copyrighted game artwork, screenshot extraction, or unsupported combat predictions. Phase 2D adds evidence-aware campaign and legendary-event synchronization at `/campaigns`, `/events`, and `/brief`. Portrait URLs are reserved for user-supplied or properly licensed images.
 
 ## Future direction
 
 See [docs/roadmap.md](docs/roadmap.md) for farming, campaign, materials, screenshot verification, cloud sync, and sharing phases.
 
-The current sanitized development fixture contains 59 characters and 324 inventory records. Campaign and event progress remain outside synchronization scope.
+The current sanitized development fixture contains 59 characters and 324 inventory records plus campaign and legendary-event progress used by Phase 2D. See [campaign and event semantics](docs/campaign-event-semantics.md) for supported fields and explicit limitations.
