@@ -45,11 +45,18 @@ yarn-error.log*
 
 # local data
 /prisma/dev.db*
+/prisma/playwright.db*
 *.sqlite
 *.sqlite3
 *.sqlite-shm
 *.sqlite-wal
 /backups
+/api-captures
+*.unsanitized.json
+*.raw-api.json
+.tacticus-credential*
+*.credential.tmp
+/test/fixtures/tacticus/*.local.json
 
 # vercel
 .vercel

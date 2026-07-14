@@ -34,12 +34,14 @@ export function PageHeader({
 export function Panel({
   children,
   className,
+  ...props
 }: {
   children: React.ReactNode;
   className?: string;
-}) {
+} & React.ComponentPropsWithoutRef<"section">) {
   return (
     <section
+      {...props}
       className={clsx(
         "border border-white/10 bg-[#101618] p-5 shadow-[0_20px_80px_rgba(0,0,0,.25)]",
         className,

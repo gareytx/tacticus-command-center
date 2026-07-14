@@ -10,3 +10,15 @@
 - Imports use schema version 1 and are validated before a transaction begins.
 
 See `prisma/schema.prisma` for the authoritative field and enum definitions.
+
+## Official API connection
+
+`TacticusPendingConnection` stores one short-lived AES-256-GCM-encrypted credential between test and explicit confirmation. `TacticusConnection` stores the confirmed encrypted credential, safe player-name continuity field, scopes, fingerprint, and sync status. `TacticusSyncRun` records safe attempt outcomes and cascades on disconnect. Optional `userId` fields reserve a future ownership relation; Phase 2A allows one local connection and does not add authentication.
+
+## Tacticus synchronization ownership
+
+`Character.externalCharacterId` is unique and becomes the durable match key after first import. `externalDefinitionId`, `syncSource`, `lastSyncedAt`, `upstreamUpdatedAt`, and `mythicShardsOwned` record upstream facts without changing strategy ownership. `InventoryItem.externalInventoryId` is unique; category and rarity are strings so additive upstream values remain representable.
+
+`TacticusSyncPreview` stores a short-lived normalized payload, never credentials. `RosterSnapshot` belongs to one connection and sync run. `CharacterChange` and `InventoryChange` store field, previous/new value, external ID, timestamp, and snapshot relation. Indexes cover sync runs, last-synced timestamps, and changes by entity.
+
+Local-owned fields are `priority`, `investmentStatus`, `notes`, team membership/role/notes, upgrade goals, campaign assignments, recommendations, and strategy tags. API-owned fields are ownership, character level, rank, ability levels, shards/mythic shards, external identifiers, and upstream timestamps.

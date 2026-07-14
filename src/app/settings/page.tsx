@@ -1,4 +1,4 @@
-import { DatabaseBackup, Download, RotateCcw } from "lucide-react";
+import { DatabaseBackup, Download, KeyRound, RotateCcw } from "lucide-react";
 import { resetDemoData } from "@/app/actions";
 import { ConfirmButton } from "@/components/confirm-button";
 import { ImportPanel } from "@/components/import-panel";
@@ -22,6 +22,24 @@ export default async function SettingsPage({
         </div>
       )}
       <div className="grid gap-6 lg:grid-cols-2">
+        <Panel>
+          <div className="mb-4 flex items-center gap-3">
+            <KeyRound className="text-amber-300" />
+            <div>
+              <h2 className="font-semibold">Official Player API</h2>
+              <p className="text-xs text-zinc-500">
+                Phase 2A secure connection
+              </p>
+            </div>
+          </div>
+          <p className="mb-5 text-sm leading-6 text-zinc-400">
+            Test and confirm a read-only Snowprint Player API key, then preview
+            roster and inventory changes before applying them safely.
+          </p>
+          <ButtonLink href="/settings/integrations/tacticus">
+            Manage Tacticus connection
+          </ButtonLink>
+        </Panel>
         <Panel>
           <div className="mb-4 flex items-center gap-3">
             <Download className="text-amber-300" />

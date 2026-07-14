@@ -12,6 +12,7 @@ enum Alliance {
   CHAOS
   XENOS
 }
+
 enum Rarity {
   COMMON
   UNCOMMON
@@ -20,6 +21,7 @@ enum Rarity {
   LEGENDARY
   MYTHIC
 }
+
 enum Rank {
   STONE_I
   STONE_II
@@ -40,6 +42,7 @@ enum Rank {
   DIAMOND_II
   DIAMOND_III
 }
+
 enum Priority {
   CRITICAL
   HIGH
@@ -47,6 +50,7 @@ enum Priority {
   LOW
   HOLD
 }
+
 enum InvestmentStatus {
   INVEST_NOW
   CAMPAIGN_PRIORITY
@@ -56,6 +60,7 @@ enum InvestmentStatus {
   MAINTAIN
   IGNORE_FOR_NOW
 }
+
 enum TeamMode {
   ARENA
   GUILD_RAID
@@ -73,6 +78,7 @@ enum TeamMode {
   SAIM_HANN_MIRROR
   OTHER
 }
+
 enum GoalStatus {
   PLANNED
   IN_PROGRESS
@@ -81,31 +87,52 @@ enum GoalStatus {
   CANCELLED
 }
 
+enum TacticusConnectionStatus {
+  CONNECTED
+  SYNCING
+  ERROR
+}
+
+enum TacticusSyncStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
 model Character {
-  id                         String            @id @default(cuid())
-  name                       String
-  slug                       String            @unique
-  faction                    String
-  alliance                   Alliance
-  rarity                     Rarity?
-  starLevel                  Int?
-  redStarLevel               Int?
-  characterLevel             Int?
-  rank                       Rank?
-  rankProgress               Int?
-  activeAbilityLevel         Int?
-  passiveAbilityLevel        Int?
-  shardsOwned                Int?
-  shardsRequired             Int?
-  priority                   Priority         @default(MEDIUM)
-  investmentStatus           InvestmentStatus @default(MAINTAIN)
-  notes                      String?
-  isOwned                    Boolean           @default(true)
-  portraitUrl                String?
-  createdAt                  DateTime          @default(now())
-  updatedAt                  DateTime          @updatedAt
-  teamMembers                TeamMember[]
-  upgradeGoals               UpgradeGoal[]
+  id                   String            @id @default(cuid())
+  name                 String
+  slug                 String            @unique
+  faction              String
+  alliance             Alliance
+  rarity               Rarity?
+  starLevel            Int?
+  redStarLevel         Int?
+  characterLevel       Int?
+  rank                 Rank?
+  rankProgress         Int?
+  activeAbilityLevel   Int?
+  passiveAbilityLevel  Int?
+  shardsOwned          Int?
+  shardsRequired       Int?
+  mythicShardsOwned    Int?
+  externalCharacterId  String?           @unique
+  externalDefinitionId String?
+  syncSource           String?
+  lastSyncedAt         DateTime?
+  upstreamUpdatedAt    DateTime?
+  priority             Priority          @default(MEDIUM)
+  investmentStatus     InvestmentStatus  @default(MAINTAIN)
+  notes                String?
+  isOwned              Boolean           @default(true)
+  portraitUrl          String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  teamMembers          TeamMember[]
+  upgradeGoals         UpgradeGoal[]
+  changes              CharacterChange[]
+
+  @@index([lastSyncedAt])
 }
 
 model Team {
@@ -133,7 +160,7 @@ model TeamMember {
 }
 
 model UpgradeGoal {
-  id                        String       @id @default(cuid())
+  id                        String     @id @default(cuid())
   characterId               String
   targetRank                Rank?
   targetRarity              Rarity?
@@ -142,8 +169,146 @@ model UpgradeGoal {
   targetPassiveAbilityLevel Int?
   priority                  Priority
   reason                    String?
-  status                    GoalStatus   @default(PLANNED)
-  createdAt                 DateTime     @default(now())
-  updatedAt                 DateTime     @updatedAt
-  character                 Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  status                    GoalStatus @default(PLANNED)
+  createdAt                 DateTime   @default(now())
+  updatedAt                 DateTime   @updatedAt
+  character                 Character  @relation(fields: [characterId], references: [id], onDelete: Cascade)
+}
+
+model TacticusConnection {
+  id                    String                   @id @default(cuid())
+  userId                String?
+  encryptedApiKey       String
+  encryptionIv          String
+  encryptionAuthTag     String
+  encryptionVersion     Int                      @default(1)
+  keyFingerprint        String                   @unique
+  status                TacticusConnectionStatus @default(CONNECTED)
+  externalPlayerId      String?
+  externalPlayerName    String?
+  scopesJson            String?
+  upstreamLastUpdatedAt DateTime?
+  lastAttemptedSyncAt   DateTime?
+  lastSuccessfulSyncAt  DateTime?
+  lastErrorCode         String?
+  lastErrorMessage      String?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  syncRuns              TacticusSyncRun[]
+  previews              TacticusSyncPreview[]
+  snapshots             RosterSnapshot[]
+}
+
+model TacticusPendingConnection {
+  id                    String   @id @default(cuid())
+  userId                String?
+  encryptedApiKey       String
+  encryptionIv          String
+  encryptionAuthTag     String
+  encryptionVersion     Int      @default(1)
+  keyFingerprint        String
+  confirmationTokenHash String   @unique
+  externalPlayerName    String
+  scopesJson            String
+  upstreamLastUpdatedAt DateTime
+  unitCount             Int      @default(0)
+  inventoryRecordCount  Int      @default(0)
+  expiresAt             DateTime
+  createdAt             DateTime @default(now())
+}
+
+model TacticusSyncRun {
+  id                    String             @id @default(cuid())
+  connectionId          String
+  status                TacticusSyncStatus
+  startedAt             DateTime           @default(now())
+  completedAt           DateTime?
+  upstreamLastUpdatedAt DateTime?
+  responseSchemaVersion String?
+  recordsReceived       Int                @default(0)
+  errorCode             String?
+  errorMessage          String?
+  connection            TacticusConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  snapshots             RosterSnapshot[]
+
+  @@index([connectionId, startedAt])
+}
+
+model TacticusSyncPreview {
+  id                    String             @id @default(cuid())
+  connectionId          String
+  tokenHash             String             @unique
+  playerIdentity        String
+  upstreamLastUpdatedAt DateTime
+  payloadJson           String
+  expiresAt             DateTime
+  createdAt             DateTime           @default(now())
+  connection            TacticusConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId, createdAt])
+}
+
+model InventoryItem {
+  id                   String            @id @default(cuid())
+  externalInventoryId  String            @unique
+  displayName          String?
+  category             String
+  rarity               String?
+  quantity             Int
+  upstreamMetadataJson String?
+  lastSyncedAt         DateTime
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  changes              InventoryChange[]
+
+  @@index([lastSyncedAt])
+}
+
+model RosterSnapshot {
+  id                    String             @id @default(cuid())
+  connectionId          String
+  syncRunId             String
+  identity              String             @unique
+  upstreamLastUpdatedAt DateTime
+  characterCount        Int
+  inventoryCount        Int
+  createdAt             DateTime           @default(now())
+  connection            TacticusConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  syncRun               TacticusSyncRun    @relation(fields: [syncRunId], references: [id], onDelete: Cascade)
+  characterChanges      CharacterChange[]
+  inventoryChanges      InventoryChange[]
+
+  @@index([syncRunId])
+}
+
+model CharacterChange {
+  id            String         @id @default(cuid())
+  snapshotId    String
+  characterId   String
+  externalId    String
+  field         String
+  previousValue String?
+  newValue      String?
+  createdAt     DateTime       @default(now())
+  snapshot      RosterSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  character     Character      @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([characterId, createdAt])
+  @@index([snapshotId])
+}
+
+model InventoryChange {
+  id              String         @id @default(cuid())
+  snapshotId      String
+  inventoryItemId String
+  externalId      String
+  field           String
+  previousValue   String?
+  newValue        String?
+  createdAt       DateTime       @default(now())
+  snapshot        RosterSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  inventoryItem   InventoryItem  @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryItemId, createdAt])
+  @@index([snapshotId])
 }

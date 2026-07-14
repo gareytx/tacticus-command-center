@@ -1,12 +1,31 @@
 import Link from "next/link";
+import { connection as waitForRequest } from "next/server";
 import { ArrowRight, Database, Plus, Target, Users } from "lucide-react";
 import { rosterRepository } from "@/data/repository";
 import { label, RARITIES } from "@/lib/constants";
 import { rankValue } from "@/lib/order";
 import { Badge, ButtonLink, PageHeader, Panel, Stat } from "@/components/ui";
+import { db } from "@/lib/db";
 
 export default async function Dashboard() {
-  const characters = await rosterRepository.characters();
+  await waitForRequest();
+  const [characters, connection, inventoryCount, recentChanges, recentUnlocks] =
+    await Promise.all([
+      rosterRepository.characters(),
+      db.tacticusConnection.findFirst(),
+      db.inventoryItem.count(),
+      db.characterChange.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        include: { character: true },
+      }),
+      db.characterChange.findMany({
+        where: { field: "isOwned", newValue: "true" },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        include: { character: true },
+      }),
+    ]);
   const owned = characters.filter((c) => c.isOwned);
   const priorityCount = owned.filter((c) =>
     ["CRITICAL", "HIGH"].includes(c.priority),
@@ -59,6 +78,35 @@ export default async function Dashboard() {
           </Panel>
         ))}
       </div>
+      {connection?.lastSuccessfulSyncAt && (
+        <Panel className="mt-6" data-testid="tacticus-sync-summary">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <Stat
+              label="Synchronized characters"
+              value={
+                characters.filter((c) => c.syncSource === "TACTICUS").length
+              }
+              accent
+            />
+            <Stat label="Inventory items" value={inventoryCount} />
+            <div>
+              <p className="text-xs text-zinc-500">
+                Last successful Tacticus sync
+              </p>
+              <p className="mt-2 text-sm">
+                {connection.lastSuccessfulSyncAt.toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-500">Upstream last updated</p>
+              <p className="mt-2 text-sm">
+                {connection.upstreamLastUpdatedAt?.toLocaleString() ??
+                  "Unknown"}
+              </p>
+            </div>
+          </div>
+        </Panel>
+      )}
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.3fr_.7fr]">
         <Panel>
           <div className="mb-5 flex items-center justify-between">
@@ -175,6 +223,51 @@ export default async function Dashboard() {
             ))}
           </div>
         </Panel>
+        {recentChanges.length > 0 && (
+          <Panel>
+            <p className="font-mono text-xs tracking-widest text-zinc-500">
+              TACTICUS CHANGES
+            </p>
+            <h2 className="mt-1 mb-4 text-xl font-semibold">
+              Recent character changes
+            </h2>
+            <div className="divide-y divide-white/10">
+              {recentChanges.map((change) => (
+                <div className="py-2 text-sm" key={change.id}>
+                  <span>{change.character.name}</span>
+                  <span className="float-right text-zinc-500">
+                    {change.field}: {change.previousValue ?? "—"} →{" "}
+                    {change.newValue ?? "—"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        )}
+        {recentUnlocks.length > 0 && (
+          <Panel>
+            <p className="font-mono text-xs tracking-widest text-zinc-500">
+              NEWLY UNLOCKED
+            </p>
+            <h2 className="mt-1 mb-4 text-xl font-semibold">
+              Recent roster additions
+            </h2>
+            <div className="divide-y divide-white/10">
+              {recentUnlocks.map((change) => (
+                <Link
+                  className="flex items-center justify-between py-2 text-sm hover:text-amber-300"
+                  href={`/roster/${change.character.slug}`}
+                  key={change.id}
+                >
+                  <span>{change.character.name}</span>
+                  <span className="text-xs text-zinc-500">
+                    {change.createdAt.toLocaleDateString()}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </Panel>
+        )}
       </div>
     </>
   );

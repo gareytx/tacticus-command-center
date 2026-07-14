@@ -35,10 +35,30 @@ Next.js App Router, strict TypeScript, Tailwind CSS, Prisma, SQLite, Zod, Vitest
 
 Data management exports schema version 1 with `exportedAt`, `characters`, `teams`, `teamMembers`, and `upgradeGoals`. Import validates the whole file before showing creates, updates, and rejects. Applying requires confirmation and first copies the SQLite database into `backups/`. Keep exports and backups private because notes can contain personal planning information.
 
+## Official Player API integration
+
+The local integration at `/settings/integrations/tacticus` connects to Snowprint's official read-only Player API. It tests the key server-side, shows the documented player name and record counts for confirmation, and encrypts the credential with AES-256-GCM.
+
+Generate a key with only the **Player** scope from the [official Tacticus API portal](https://api.tacticusgame.com/settings). Do not enable Guild or Guild Raid scopes for Command Center Phase 2A.
+
+Add a base64-encoded 32-byte encryption key to the local `.env` file:
+
+```text
+TACTICUS_CREDENTIAL_ENCRYPTION_KEY="..."
+```
+
+One safe way to generate a value locally is `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"`. Paste its output into `.env`; never commit or share it. If the master key is lost or changed, disconnect and reconnect the API credential because existing ciphertext cannot be recovered.
+
+Run `npm run dev`, open the integration page, and choose **Test Connection**. After choosing **Connect This Account**, every import follows **Preview Sync → Confirm and apply**. Previewing does not change the database. Confirmation applies character mappings, API-owned progression fields, inventory, snapshot metadata, and structured changes in one transaction. Local priorities, investment status, notes, teams, roles, and upgrade goals are preserved.
+
+Security limitations: this release relies on localhost and same-origin checks because the application has no user-authentication system yet. Other software running as the same operating-system user may be able to access the local app. Keep the server bound locally, protect `.env` and `prisma/dev.db`, and do not publish the application. The official endpoint does not expose a player ID, so Phase 2A uses exact player-name continuity as a limited mismatch check.
+
 ## Current limitations
 
-This release is single-user and local only. It does not include authentication, cloud sync, public sharing, external game APIs, copyrighted game artwork, screenshot extraction, material inventory, or automated recommendations. Portrait URLs are reserved for user-supplied or properly licensed images.
+This release is single-user and local only. It does not include authentication, cloud sync, public sharing, campaign/event synchronization, copyrighted game artwork, screenshot extraction, or automated recommendations. Portrait URLs are reserved for user-supplied or properly licensed images.
 
 ## Future direction
 
 See [docs/roadmap.md](docs/roadmap.md) for farming, campaign, materials, screenshot verification, cloud sync, and sharing phases.
+
+The current sanitized development fixture contains 59 characters and 324 inventory records. Campaign and event progress remain outside synchronization scope.
