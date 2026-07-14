@@ -21,7 +21,9 @@
     "db:backfill-readiness": "tsx scripts/backfill-phase-2c.ts",
     "db:backfill-phase-2d": "tsx scripts/backfill-phase-2d.ts",
     "audit:inventory": "tsx scripts/audit-inventory-reconciliation.ts",
-    "audit:phase2d": "tsx scripts/audit-phase-2d.ts"
+    "audit:phase2d": "tsx scripts/audit-phase-2d.ts",
+    "db:backfill-recommendations": "tsx scripts/backfill-recommendations.ts",
+    "audit:recommendations": "tsx scripts/audit-recommendations.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",

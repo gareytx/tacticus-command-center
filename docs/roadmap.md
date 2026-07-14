@@ -49,3 +49,5 @@
 - Community strategy data
 
 Future phases should preserve manual correction, source transparency, and explicit user control over imported or inferred values. Phase 2D provides campaign and legendary-event progress mapping, local plans, and the daily strategy brief without inventing completion or event rules. Guild scopes and background polling remain out of scope.
+
+Phase 3A adds the evidence-based recommendation engine, lifecycle/feedback, recommendation review, time-budget planning categories, strategic objective, and optional reflection. Phase 3B should focus on richer user-authored planning relationships and review workflows—not unsupported game-rule inference.

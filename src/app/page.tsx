@@ -17,6 +17,8 @@ export default async function Dashboard() {
     recentUnlocks,
     campaignCount,
     eventCount,
+    recommendations,
+    recommendationSettings,
   ] = await Promise.all([
     rosterRepository.characters(),
     db.tacticusConnection.findFirst(),
@@ -34,6 +36,11 @@ export default async function Dashboard() {
     }),
     db.campaignDefinition.count(),
     db.eventDefinition.count(),
+    db.recommendation.findMany({
+      where: { status: { in: ["ACTIVE", "SNOOZED"] } },
+      orderBy: { priorityScore: "desc" },
+    }),
+    db.strategicSettings.findUnique({ where: { id: "default" } }),
   ]);
   const allOwned = characters.filter((c) => c.isOwned);
   const owned = allOwned.filter((c) => c.unitType === "CHARACTER");
@@ -143,6 +150,71 @@ export default async function Dashboard() {
               <Link className="text-amber-300" href="/brief">
                 Strategy brief →
               </Link>
+            </div>
+          </div>
+        </Panel>
+      )}
+      {recommendations.length > 0 && (
+        <Panel className="mt-6" data-testid="recommendation-summary">
+          <div className="grid gap-4 md:grid-cols-[1.5fr_repeat(4,1fr)]">
+            <div>
+              <p className="font-mono text-xs tracking-widest text-amber-300">
+                HIGHEST-PRIORITY RECOMMENDATION
+              </p>
+              <Link
+                href={`/recommendations/${recommendations.find((r) => r.status === "ACTIVE")?.id ?? recommendations[0].id}`}
+                className="mt-2 block font-semibold hover:text-amber-300"
+              >
+                {recommendations.find((r) => r.status === "ACTIVE")?.title ??
+                  "No active recommendation"}
+              </Link>
+              <p className="mt-1 text-xs text-zinc-500">
+                Generated{" "}
+                {recommendationSettings?.lastRecommendationRunAt?.toLocaleString() ??
+                  "Unknown"}
+              </p>
+            </div>
+            <Stat
+              label="Active"
+              value={
+                recommendations.filter((r) => r.status === "ACTIVE").length
+              }
+            />
+            <Stat
+              label="Exact + high"
+              value={
+                recommendations.filter(
+                  (r) =>
+                    r.status === "ACTIVE" &&
+                    ["EXACT", "HIGH"].includes(r.confidence),
+                ).length
+              }
+            />
+            <Stat
+              label="Review required"
+              value={
+                recommendations.filter(
+                  (r) =>
+                    r.status === "ACTIVE" &&
+                    ["DATA_QUALITY", "REVIEW"].includes(r.advisorSource),
+                ).length
+              }
+            />
+            <div>
+              <Stat
+                label="Snoozed"
+                value={
+                  recommendations.filter((r) => r.status === "SNOOZED").length
+                }
+              />
+              <div className="mt-2 flex gap-3 text-xs">
+                <Link className="text-amber-300" href="/recommendations">
+                  Review →
+                </Link>
+                <Link className="text-amber-300" href="/brief">
+                  Brief →
+                </Link>
+              </div>
             </div>
           </div>
         </Panel>

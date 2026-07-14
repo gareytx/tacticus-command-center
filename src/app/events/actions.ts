@@ -2,6 +2,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { regenerateRecommendations } from "@/services/recommendation.service";
 
 const schema = z.object({
   eventId: z.string().min(1),
@@ -55,6 +56,7 @@ export async function saveEventPlan(formData: FormData) {
         },
       });
   }
+  await regenerateRecommendations();
   revalidatePath(`/events/${value.eventId}`);
   revalidatePath("/events");
   revalidatePath("/brief");
@@ -84,6 +86,7 @@ export async function saveEventClassification(formData: FormData) {
       confidence: "MANUAL",
     },
   });
+  await regenerateRecommendations();
   revalidatePath(`/events/${value.eventId}`);
   revalidatePath("/events");
 }

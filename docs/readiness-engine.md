@@ -1,5 +1,7 @@
 # Readiness engine
 
+Phase 3A consumes readiness output as structured evidence. Exact local threshold results can support an exact recommendation; missing costs remain insufficient and are never promoted by recommendation scoring. Manual verification remains user-owned evidence and does not manufacture recipes or thresholds.
+
 ## Opportunity model
 
 The engine produces shard, level, rank, and ability opportunities for owned records. A shard opportunity is `EXACT` only when both `shardsOwned` and a positive local `shardsRequired` threshold exist. It is ready when owned is at least required and blocked otherwise. Without that local threshold it is explicitly `INSUFFICIENT_DATA`.

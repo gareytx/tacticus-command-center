@@ -2,6 +2,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { regenerateRecommendations } from "@/services/recommendation.service";
 
 const schema = z.object({
   key: z.string().min(3),
@@ -18,5 +19,6 @@ export async function saveReadinessVerification(formData: FormData) {
     create: { ...parsed, note: parsed.note || null },
     update: { status: parsed.status, note: parsed.note || null },
   });
+  await regenerateRecommendations();
   revalidatePath("/readiness");
 }

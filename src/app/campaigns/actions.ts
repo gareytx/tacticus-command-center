@@ -2,6 +2,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { regenerateRecommendations } from "@/services/recommendation.service";
 
 const planSchema = z.object({
   campaignId: z.string().min(1),
@@ -56,6 +57,7 @@ export async function saveCampaignPlan(formData: FormData) {
         },
       });
   }
+  await regenerateRecommendations();
   revalidatePath(`/campaigns/${value.campaignId}`);
   revalidatePath("/campaigns");
   revalidatePath("/brief");
@@ -78,6 +80,7 @@ export async function saveCampaignClassification(formData: FormData) {
       confidence: "MANUAL",
     },
   });
+  await regenerateRecommendations();
   revalidatePath(`/campaigns/${value.campaignId}`);
   revalidatePath("/campaigns");
 }

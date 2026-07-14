@@ -57,7 +57,7 @@ Security limitations: this release relies on localhost and same-origin checks be
 
 ## Current limitations
 
-This release is single-user and local only. It does not include authentication, cloud sync, public sharing, copyrighted game artwork, screenshot extraction, or unsupported combat predictions. Phase 2D adds evidence-aware campaign and legendary-event synchronization at `/campaigns`, `/events`, and `/brief`. Portrait URLs are reserved for user-supplied or properly licensed images.
+This release is single-user and local only. It does not include authentication, cloud sync, public sharing, copyrighted game artwork, screenshot extraction, or unsupported combat predictions. Phase 2D adds evidence-aware campaign and legendary-event synchronization. Phase 3A adds persisted recommendations at `/recommendations` and upgrades `/brief` with lifecycle controls, time-budget planning categories, a user-selected strategic objective, and an optional local reflection section. Recommendations never add farming, energy, drop-rate, recipe, tier-list, or battle-success claims. Portrait URLs are reserved for user-supplied or properly licensed images.
 
 ## Future direction
 

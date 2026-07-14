@@ -177,6 +177,31 @@ enum PlanStatus {
   NEEDS_REVIEW
 }
 
+enum RecommendationStatus {
+  ACTIVE
+  SNOOZED
+  DISMISSED
+  COMPLETED
+  STALE
+  SUPERSEDED
+}
+
+enum RecommendationConfidence {
+  EXACT
+  HIGH
+  HEURISTIC
+  MANUAL
+  INSUFFICIENT_DATA
+}
+
+enum RecommendationFeedbackResponse {
+  HELPFUL
+  NOT_HELPFUL
+  ALREADY_DONE
+  NOT_APPLICABLE
+  NEEDS_MORE_CONTEXT
+}
+
 model Character {
   id                     String                  @id @default(cuid())
   name                   String
@@ -314,6 +339,7 @@ model TacticusSyncRun {
   errorMessage          String?
   connection            TacticusConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   snapshots             RosterSnapshot[]
+  recommendations       Recommendation[]
 
   @@index([connectionId, startedAt])
 }
@@ -385,8 +411,79 @@ model RosterSnapshot {
   inventoryChanges      InventoryChange[]
   campaignChanges       CampaignProgressChange[]
   eventChanges          EventProgressChange[]
+  recommendations       Recommendation[]
 
   @@index([syncRunId])
+}
+
+model Recommendation {
+  id               String                   @id @default(cuid())
+  type             String
+  advisorSource    String
+  status           RecommendationStatus     @default(ACTIVE)
+  confidence       RecommendationConfidence
+  priorityScore    Int
+  durationCategory String
+  title            String
+  summary          String
+  explanation      String?
+  limitations      String?
+  evidenceJson     String
+  targetEntityType String?
+  targetEntityId   String?
+  targetLabel      String?
+  lifecycleKey     String
+  fingerprint      String                   @unique
+  sourceSyncRunId  String?
+  sourceSnapshotId String?
+  generatedAt      DateTime                 @default(now())
+  expiresAt        DateTime?
+  staleAt          DateTime?
+  dismissedAt      DateTime?
+  snoozedUntil     DateTime?
+  completedAt      DateTime?
+  supersededAt     DateTime?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  sourceSyncRun    TacticusSyncRun?         @relation(fields: [sourceSyncRunId], references: [id], onDelete: SetNull)
+  sourceSnapshot   RosterSnapshot?          @relation(fields: [sourceSnapshotId], references: [id], onDelete: SetNull)
+  feedback         RecommendationFeedback[]
+
+  @@index([status, priorityScore])
+  @@index([confidence])
+  @@index([targetEntityType, targetEntityId])
+  @@index([expiresAt])
+  @@index([generatedAt])
+  @@index([lifecycleKey])
+}
+
+model RecommendationFeedback {
+  id               String                         @id @default(cuid())
+  recommendationId String
+  response         RecommendationFeedbackResponse
+  note             String?
+  createdAt        DateTime                       @default(now())
+  recommendation   Recommendation                 @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+
+  @@index([recommendationId, createdAt])
+  @@index([response])
+}
+
+model StrategicSettings {
+  id                      String    @id @default("default")
+  objectiveType           String?
+  objectiveEntityType     String?
+  objectiveEntityId       String?
+  objectiveLabel          String?
+  reflectionEnabled       Boolean   @default(false)
+  reflectionIndex         Int       @default(0)
+  preferredTimeBudget     Int       @default(20)
+  customTimeBudget        Int?
+  lastRecommendationRunAt DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@index([objectiveEntityType, objectiveEntityId])
 }
 
 model CampaignDefinition {

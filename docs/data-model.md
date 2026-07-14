@@ -34,3 +34,7 @@ Local-owned fields are `priority`, `investmentStatus`, `notes`, team membership/
 `CampaignDefinition` and `EventDefinition` contain stable upstream identity and semantic classification. Their one-to-one progress records contain API-owned counters and sanitized structured progress. Their optional plan records contain user-owned status, priority, objective, blocker, strategy notes, target date, and preferred team. Progress and plan changes are separate histories, and API progress changes reference the same `RosterSnapshot` used by roster and inventory synchronization.
 
 Campaign external identity is unique on `externalKey = id::type`, while `externalCampaignId` remains indexed and non-unique because the sanitized fixture proves repeated IDs across variants.
+
+## Phase 3A recommendations
+
+`Recommendation` stores validated safe evidence JSON, deterministic score, advisor/type/target identity, lifecycle key, unique material fingerprint, source sync/snapshot provenance, duration category, and lifecycle timestamps. `RecommendationFeedback` preserves append-only responses. `StrategicSettings` stores the optional local objective, reflection preference/index, time budget, and last generation time. Synchronization does not own any of these settings.

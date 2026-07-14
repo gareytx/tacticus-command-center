@@ -10,6 +10,7 @@ import {
   Map,
   CalendarClock,
   ClipboardList,
+  Sparkles,
 } from "lucide-react";
 
 const links = [
@@ -19,6 +20,7 @@ const links = [
   ["/campaigns", "Campaigns", Map],
   ["/events", "Events", CalendarClock],
   ["/brief", "Brief", ClipboardList],
+  ["/recommendations", "Recommendations", Sparkles],
   ["/priorities", "Priorities", Target],
   ["/teams", "Teams", Users],
   ["/settings", "Data", Database],

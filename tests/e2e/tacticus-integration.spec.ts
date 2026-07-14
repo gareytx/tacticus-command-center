@@ -116,6 +116,22 @@ test("connected-state UI renders from mocked server data", async ({ page }) => {
 test("fixture preview applies transactionally and updates the dashboard without changing strategy", async ({
   page,
 }) => {
+  await db.strategicSettings.upsert({
+    where: { id: "default" },
+    create: {
+      id: "default",
+      objectiveType: "GENERAL",
+      objectiveLabel: "Preserve this strategic objective",
+      reflectionEnabled: true,
+      preferredTimeBudget: 45,
+    },
+    update: {
+      objectiveType: "GENERAL",
+      objectiveLabel: "Preserve this strategic objective",
+      reflectionEnabled: true,
+      preferredTimeBudget: 45,
+    },
+  });
   await db.tacticusConnection.deleteMany();
   await db.inventoryItem.deleteMany();
   await db.character.updateMany({
@@ -249,6 +265,18 @@ test("fixture preview applies transactionally and updates the dashboard without 
   expect(await db.inventoryItem.count()).toBe(324);
   expect(await db.campaignDefinition.count()).toBe(9);
   expect(await db.eventDefinition.count()).toBe(1);
+  expect(
+    await db.recommendation.count({ where: { status: "ACTIVE" } }),
+  ).toBeGreaterThan(0);
+  expect(
+    await db.strategicSettings.findUniqueOrThrow({
+      where: { id: "default" },
+    }),
+  ).toMatchObject({
+    objectiveLabel: "Preserve this strategic objective",
+    reflectionEnabled: true,
+    preferredTimeBudget: 45,
+  });
   expect(
     await db.campaignDefinition.count({
       where: { externalCampaignId: "eventCampaign6" },

@@ -678,6 +678,9 @@ export async function applyTacticusRosterSync(
       appliedEvents,
     };
   });
+  await import("@/services/recommendation.service")
+    .then(({ regenerateRecommendations }) => regenerateRecommendations({ now }))
+    .catch(() => undefined);
   return {
     status: "SUCCEEDED" as const,
     ...result,

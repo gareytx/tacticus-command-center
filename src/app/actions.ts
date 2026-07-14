@@ -11,6 +11,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { regenerateRecommendations } from "@/services/recommendation.service";
 
 function clean(formData: FormData) {
   return Object.fromEntries(
@@ -36,6 +37,7 @@ export async function saveCharacter(
   };
   if (id) await db.character.update({ where: { id }, data });
   else await db.character.create({ data });
+  await regenerateRecommendations();
   revalidatePath("/");
   revalidatePath("/roster");
   redirect(`/roster/${data.slug}`);
@@ -43,6 +45,7 @@ export async function saveCharacter(
 
 export async function deleteCharacter(id: string) {
   await db.character.delete({ where: { id } });
+  await regenerateRecommendations();
   revalidatePath("/");
   revalidatePath("/roster");
   redirect("/roster");
@@ -64,6 +67,7 @@ export async function setUnitClassification(
       unitTypeConfidence: "CONFIRMED",
     },
   });
+  await regenerateRecommendations();
   revalidatePath("/");
   revalidatePath("/roster");
   revalidatePath(`/roster/${slug}`);
@@ -77,6 +81,7 @@ export async function saveGoal(formData: FormData) {
       `/roster/${formData.get("characterSlug")}?error=${encodeURIComponent(parsed.error.issues[0].message)}`,
     );
   await db.upgradeGoal.create({ data: parsed.data });
+  await regenerateRecommendations();
   revalidatePath("/priorities");
   revalidatePath(`/roster/${formData.get("characterSlug")}`);
   redirect("/priorities");
@@ -85,6 +90,7 @@ export async function saveGoal(formData: FormData) {
 export async function updateGoalStatus(id: string, formData: FormData) {
   const status = goalSchema.shape.status.parse(formData.get("status"));
   await db.upgradeGoal.update({ where: { id }, data: { status } });
+  await regenerateRecommendations();
   revalidatePath("/priorities");
 }
 
@@ -97,6 +103,7 @@ export async function saveTeam(id: string | undefined, formData: FormData) {
   const team = id
     ? await db.team.update({ where: { id }, data: parsed.data })
     : await db.team.create({ data: parsed.data });
+  await regenerateRecommendations();
   revalidatePath("/teams");
   redirect(`/teams/${team.id}`);
 }
@@ -121,12 +128,14 @@ export async function addTeamMember(formData: FormData) {
       `/teams/${parsed.data.teamId}?error=${encodeURIComponent("That character or position is already assigned to this team.")}`,
     );
   await db.teamMember.create({ data: parsed.data });
+  await regenerateRecommendations();
   revalidatePath(`/teams/${parsed.data.teamId}`);
   redirect(`/teams/${parsed.data.teamId}`);
 }
 
 export async function removeTeamMember(id: string, teamId: string) {
   await db.teamMember.delete({ where: { id } });
+  await regenerateRecommendations();
   revalidatePath(`/teams/${teamId}`);
 }
 
