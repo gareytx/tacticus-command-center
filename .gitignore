@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/test-results
+/playwright-report
 
 # next.js
 /.next/
@@ -22,6 +24,13 @@
 
 # misc
 .DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
 *.pem
 
 # debug
@@ -32,6 +41,15 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# local data
+/prisma/dev.db*
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+/backups
 
 # vercel
 .vercel

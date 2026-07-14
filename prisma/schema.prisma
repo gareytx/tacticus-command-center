@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Alliance {
+  IMPERIAL
+  CHAOS
+  XENOS
+}
+enum Rarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+  MYTHIC
+}
+enum Rank {
+  STONE_I
+  STONE_II
+  STONE_III
+  IRON_I
+  IRON_II
+  IRON_III
+  BRONZE_I
+  BRONZE_II
+  BRONZE_III
+  SILVER_I
+  SILVER_II
+  SILVER_III
+  GOLD_I
+  GOLD_II
+  GOLD_III
+  DIAMOND_I
+  DIAMOND_II
+  DIAMOND_III
+}
+enum Priority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  HOLD
+}
+enum InvestmentStatus {
+  INVEST_NOW
+  CAMPAIGN_PRIORITY
+  GUILD_RAID_PRIORITY
+  ARENA_PRIORITY
+  EVENT_PRIORITY
+  MAINTAIN
+  IGNORE_FOR_NOW
+}
+enum TeamMode {
+  ARENA
+  GUILD_RAID
+  GUILD_WAR
+  SALVAGE_RUN
+  ONSLAUGHT
+  CHARACTER_EVENT
+  INDOMITUS
+  INDOMITUS_MIRROR
+  FALL_OF_CADIA
+  FALL_OF_CADIA_MIRROR
+  OCTARIUS
+  OCTARIUS_MIRROR
+  SAIM_HANN
+  SAIM_HANN_MIRROR
+  OTHER
+}
+enum GoalStatus {
+  PLANNED
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+  CANCELLED
+}
+
+model Character {
+  id                         String            @id @default(cuid())
+  name                       String
+  slug                       String            @unique
+  faction                    String
+  alliance                   Alliance
+  rarity                     Rarity?
+  starLevel                  Int?
+  redStarLevel               Int?
+  characterLevel             Int?
+  rank                       Rank?
+  rankProgress               Int?
+  activeAbilityLevel         Int?
+  passiveAbilityLevel        Int?
+  shardsOwned                Int?
+  shardsRequired             Int?
+  priority                   Priority         @default(MEDIUM)
+  investmentStatus           InvestmentStatus @default(MAINTAIN)
+  notes                      String?
+  isOwned                    Boolean           @default(true)
+  portraitUrl                String?
+  createdAt                  DateTime          @default(now())
+  updatedAt                  DateTime          @updatedAt
+  teamMembers                TeamMember[]
+  upgradeGoals               UpgradeGoal[]
+}
+
+model Team {
+  id          String       @id @default(cuid())
+  name        String
+  mode        TeamMode
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  teamMembers TeamMember[]
+}
+
+model TeamMember {
+  id          String    @id @default(cuid())
+  teamId      String
+  characterId String
+  position    Int
+  role        String?
+  notes       String?
+  team        Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, position])
+  @@unique([teamId, characterId])
+}
+
+model UpgradeGoal {
+  id                        String       @id @default(cuid())
+  characterId               String
+  targetRank                Rank?
+  targetRarity              Rarity?
+  targetCharacterLevel      Int?
+  targetActiveAbilityLevel  Int?
+  targetPassiveAbilityLevel Int?
+  priority                  Priority
+  reason                    String?
+  status                    GoalStatus   @default(PLANNED)
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
+  character                 Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
+}

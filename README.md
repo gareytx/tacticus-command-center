@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tacticus Command Center
 
-## Getting Started
+Tacticus Command Center is a local-first personal roster, progression, and strategy-management application for Warhammer 40,000: Tacticus. It stores a structured roster so planning can use real character investment data instead of scattered screenshots.
 
-First, run the development server:
+> Unofficial fan-made roster tool. Not affiliated with or endorsed by Games Workshop or Snowprint Studios.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Screenshots
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Screenshots will be added after the first roster is populated. Suggested captures: dashboard, roster card view, character detail, priority board, and team formation.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Next.js App Router, strict TypeScript, Tailwind CSS, Prisma, SQLite, Zod, Vitest, Playwright, ESLint, and Prettier.
 
-## Learn More
+## Local setup
 
-To learn more about Next.js, take a look at the following resources:
+1. Install Node.js 20.9 or newer and run `npm install`.
+2. Copy `.env.example` to `.env`. The default `DATABASE_URL="file:./dev.db"` stores the database in `prisma/dev.db`.
+3. Run `npm run db:migrate -- --name init`.
+4. Run `npm run db:seed`.
+5. Start the application with `npm run dev`, then open `http://localhost:3000`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Commands
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `npm run dev` — local development
+- `npm run build` / `npm start` — production build and server
+- `npm run typecheck` — strict TypeScript check
+- `npm run lint` — ESLint
+- `npm test` — Vitest unit tests
+- `npm run test:e2e` — Playwright smoke test
+- `npm run format` / `npm run format:check` — Prettier
+- `npm run db:studio` — local Prisma data browser
 
-## Deploy on Vercel
+## JSON import and export
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Data management exports schema version 1 with `exportedAt`, `characters`, `teams`, `teamMembers`, and `upgradeGoals`. Import validates the whole file before showing creates, updates, and rejects. Applying requires confirmation and first copies the SQLite database into `backups/`. Keep exports and backups private because notes can contain personal planning information.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Current limitations
+
+This release is single-user and local only. It does not include authentication, cloud sync, public sharing, external game APIs, copyrighted game artwork, screenshot extraction, material inventory, or automated recommendations. Portrait URLs are reserved for user-supplied or properly licensed images.
+
+## Future direction
+
+See [docs/roadmap.md](docs/roadmap.md) for farming, campaign, materials, screenshot verification, cloud sync, and sharing phases.
