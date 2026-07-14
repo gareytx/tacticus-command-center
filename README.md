@@ -1,5 +1,7 @@
 # Tacticus Command Center
 
+Phase 2C adds evidence-aware upgrade readiness, explicit Character / Machine of War / Unknown classification, normalized inventory taxonomy, resource-pressure analysis, and manual verification. See [data semantics](docs/phase-2c-data-semantics.md) and the [readiness engine](docs/readiness-engine.md).
+
 Tacticus Command Center is a local-first personal roster, progression, and strategy-management application for Warhammer 40,000: Tacticus. It stores a structured roster so planning can use real character investment data instead of scattered screenshots.
 
 > Unofficial fan-made roster tool. Not affiliated with or endorsed by Games Workshop or Snowprint Studios.

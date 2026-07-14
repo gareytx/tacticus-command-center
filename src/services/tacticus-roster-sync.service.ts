@@ -18,6 +18,8 @@ import {
   type PreviewPayload,
 } from "@/lib/tacticus/sync-domain";
 import type { TacticusApiClient } from "@/lib/tacticus/types";
+import { classifyUnit } from "@/lib/readiness/unit-classification";
+import { classifyInventory } from "@/lib/readiness/inventory-taxonomy";
 
 const PREVIEW_TTL_MS = 10 * 60 * 1000;
 const SEEDED_EXTERNAL_IDS: Record<string, string> = {
@@ -46,7 +48,10 @@ type FieldChange = {
   newValue: string | null;
 };
 
-const characterValues = (incoming: CharacterSync) => ({
+const characterValues = (
+  incoming: CharacterSync,
+  existing?: ExistingCharacter | null,
+) => ({
   isOwned: true,
   characterLevel: incoming.characterLevel,
   rank: incoming.rank === "UNKNOWN" ? null : incoming.rank,
@@ -57,6 +62,16 @@ const characterValues = (incoming: CharacterSync) => ({
   externalCharacterId: incoming.externalId,
   externalDefinitionId: incoming.definitionId,
   syncSource: "TACTICUS",
+  ...(existing?.unitTypeSource === "MANUAL"
+    ? {}
+    : (() => {
+        const classification = classifyUnit(incoming.externalId);
+        return {
+          unitType: classification.unitType,
+          unitTypeSource: classification.source,
+          unitTypeConfidence: classification.confidence,
+        };
+      })()),
 });
 
 function changes(
@@ -115,7 +130,7 @@ export function describePreview(
       };
     const diff = changes(
       existing as unknown as Record<string, unknown> | null,
-      characterValues(incoming),
+      characterValues(incoming, existing),
     );
     return {
       externalId: incoming.externalId,
@@ -307,7 +322,10 @@ export async function applyTacticusRosterSync(
         (candidate) => candidate.externalId === item.externalId,
       )!;
       const data = {
-        ...characterValues(incoming),
+        ...characterValues(
+          incoming,
+          characters.find((candidate) => candidate.id === item.characterId),
+        ),
         lastSyncedAt: now,
         upstreamUpdatedAt: new Date(payload.upstreamLastUpdatedAt),
       };
@@ -340,20 +358,31 @@ export async function applyTacticusRosterSync(
       const incoming = payload.inventory.find(
         (candidate) => candidate.externalId === item.externalId,
       )!;
+      const taxonomy = classifyInventory(incoming);
       const inventoryItem = await tx.inventoryItem.upsert({
         where: { externalInventoryId: incoming.externalId },
         create: {
           externalInventoryId: incoming.externalId,
-          displayName: incoming.displayName,
+          displayName: taxonomy.displayName,
           category: incoming.category,
+          resourceType: taxonomy.resourceType,
+          resourceSubtype: taxonomy.resourceSubtype,
+          allianceRestriction: taxonomy.allianceRestriction,
+          semanticStatus: taxonomy.semanticStatus,
+          externalResourceId: taxonomy.externalResourceId,
           rarity: incoming.rarity,
           quantity: incoming.quantity,
           upstreamMetadataJson: JSON.stringify(incoming.metadata),
           lastSyncedAt: now,
         },
         update: {
-          displayName: incoming.displayName,
+          displayName: taxonomy.displayName,
           category: incoming.category,
+          resourceType: taxonomy.resourceType,
+          resourceSubtype: taxonomy.resourceSubtype,
+          allianceRestriction: taxonomy.allianceRestriction,
+          semanticStatus: taxonomy.semanticStatus,
+          externalResourceId: taxonomy.externalResourceId,
           rarity: incoming.rarity,
           quantity: incoming.quantity,
           upstreamMetadataJson: JSON.stringify(incoming.metadata),

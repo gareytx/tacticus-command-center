@@ -9,6 +9,7 @@ import {
   previewPayloadSchema,
 } from "@/lib/tacticus/sync-domain";
 import { describePreview } from "@/services/tacticus-roster-sync.service";
+import { classifyInventory } from "@/lib/readiness/inventory-taxonomy";
 
 const fakeKey = "not-a-real-tacticus-player-key";
 const db = new PrismaClient();
@@ -130,6 +131,36 @@ test("fixture preview applies transactionally and updates the dashboard without 
       notes: "Preserve this Bellator strategy note",
     },
   });
+  const localGoal = await db.upgradeGoal.create({
+    data: {
+      characterId: (
+        await db.character.findUniqueOrThrow({ where: { slug: "bellator" } })
+      ).id,
+      priority: "HIGH",
+      status: "IN_PROGRESS",
+      targetCharacterLevel: 30,
+      reason: "Preserve this local goal",
+    },
+  });
+  const localTeam = await db.team.create({
+    data: {
+      name: "Preserved local team",
+      mode: "ARENA",
+      notes: "Preserve this team note",
+      teamMembers: {
+        create: {
+          characterId: (
+            await db.character.findUniqueOrThrow({
+              where: { slug: "bellator" },
+            })
+          ).id,
+          position: 1,
+          role: "Anchor",
+          notes: "Preserve this role note",
+        },
+      },
+    },
+  });
   const connection = await db.tacticusConnection.create({
     data: {
       encryptedApiKey: "test-only-ciphertext",
@@ -157,6 +188,12 @@ test("fixture preview applies transactionally and updates the dashboard without 
     await db.character.findMany(),
     await db.inventoryItem.findMany(),
   );
+  expect(described.summary).toMatchObject({
+    inventoryRecordsReceived: 324,
+    inventoryRecordsToCreate: 324,
+    inventoryQuantityChanges: 0,
+    rejectedRecords: 0,
+  });
   await page.route("**/api/integrations/tacticus/preview", (route) =>
     route.fulfill({
       status: 200,
@@ -196,6 +233,69 @@ test("fixture preview applies transactionally and updates the dashboard without 
     59,
   );
   expect(await db.inventoryItem.count()).toBe(324);
+  const storedInventory = await db.inventoryItem.findMany();
+  const storedById = new Map(
+    storedInventory.map((item) => [item.externalInventoryId, item]),
+  );
+  expect(storedById.size).toBe(324);
+  for (const incoming of payload.inventory) {
+    const stored = storedById.get(incoming.externalId);
+    const taxonomy = classifyInventory(incoming);
+    expect(stored, incoming.externalId).toMatchObject({
+      category: incoming.category,
+      displayName: taxonomy.displayName,
+      resourceType: taxonomy.resourceType,
+      resourceSubtype: taxonomy.resourceSubtype,
+      rarity: incoming.rarity,
+      allianceRestriction: taxonomy.allianceRestriction,
+      quantity: incoming.quantity,
+    });
+  }
+  expect(
+    storedInventory.reduce((total, item) => total + item.quantity, 0),
+  ).toBe(payload.inventory.reduce((total, item) => total + item.quantity, 0));
+  expect(
+    await db.character.count({ where: { unitType: "MACHINE_OF_WAR" } }),
+  ).toBe(5);
+  expect(await db.character.count({ where: { unitType: "UNKNOWN" } })).toBe(2);
+  expect(
+    await db.inventoryItem.count({ where: { resourceType: "UNKNOWN" } }),
+  ).toBe(0);
+  const unresolvedUnits = await db.character.findMany({
+    where: { unitType: "UNKNOWN" },
+    orderBy: { name: "asc" },
+  });
+  expect(unresolvedUnits.map((unit) => unit.externalCharacterId)).toEqual([
+    "tauBroadside",
+    "thousDaemonPrince",
+  ]);
+  await page.goto("/readiness");
+  await page.getByLabel("unitType").selectOption("UNKNOWN");
+  await expect(page.getByText("Z'Kar", { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByText("Tson'ji", { exact: true }).first(),
+  ).toBeVisible();
+
+  const zkar = await db.character.findUniqueOrThrow({
+    where: { externalCharacterId: "thousDaemonPrince" },
+  });
+  await db.character.update({
+    where: { id: zkar.id },
+    data: {
+      unitType: "MACHINE_OF_WAR",
+      unitTypeSource: "MANUAL",
+      unitTypeConfidence: "CONFIRMED",
+    },
+  });
+  await db.readinessVerification.create({
+    data: {
+      key: `${bellator.id}:SHARD`,
+      characterId: bellator.id,
+      opportunityType: "SHARD",
+      status: "VERIFIED",
+      note: "Local test evidence",
+    },
+  });
 
   const repeatToken = "fixture-repeat-token-" + "b".repeat(32);
   await db.tacticusSyncPreview.create({
@@ -216,6 +316,44 @@ test("fixture preview applies transactionally and updates the dashboard without 
     59,
   );
   expect(await db.inventoryItem.count()).toBe(324);
+  expect(
+    (await db.inventoryItem.findMany()).reduce(
+      (total, item) => total + item.quantity,
+      0,
+    ),
+  ).toBe(payload.inventory.reduce((total, item) => total + item.quantity, 0));
+  expect(
+    await db.character.findUnique({ where: { id: zkar.id } }),
+  ).toMatchObject({
+    unitType: "MACHINE_OF_WAR",
+    unitTypeSource: "MANUAL",
+  });
+  expect(
+    await db.upgradeGoal.findUnique({ where: { id: localGoal.id } }),
+  ).toMatchObject({
+    status: "IN_PROGRESS",
+    reason: "Preserve this local goal",
+  });
+  expect(
+    await db.team.findUnique({ where: { id: localTeam.id } }),
+  ).toMatchObject({
+    name: "Preserved local team",
+    notes: "Preserve this team note",
+  });
+  expect(
+    await db.teamMember.findFirst({ where: { teamId: localTeam.id } }),
+  ).toMatchObject({
+    role: "Anchor",
+    notes: "Preserve this role note",
+  });
+  expect(
+    await db.readinessVerification.findUnique({
+      where: { key: `${bellator.id}:SHARD` },
+    }),
+  ).toMatchObject({
+    status: "VERIFIED",
+    note: "Local test evidence",
+  });
 });
 
 test("a database failure rolls the entire apply transaction back", async ({

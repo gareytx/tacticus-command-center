@@ -9,6 +9,7 @@ import {
   RANKS,
   RARITIES,
   label,
+  UNIT_TYPES,
 } from "@/lib/constants";
 import { priorityValue, rankValue, rarityValue } from "@/lib/order";
 import { Badge, EmptyState, fieldClass } from "./ui";
@@ -29,6 +30,7 @@ type CharacterItem = {
   investmentStatus: string;
   isOwned: boolean;
   updatedAt: string;
+  unitType: string;
 };
 export function RosterBrowser({ characters }: { characters: CharacterItem[] }) {
   const [view, setView] = useState<"cards" | "table">("cards");
@@ -41,6 +43,7 @@ export function RosterBrowser({ characters }: { characters: CharacterItem[] }) {
     rank: "",
     priority: "",
     investmentStatus: "",
+    unitType: "",
     sort: "name",
   });
   const factions = [...new Set(characters.map((c) => c.faction))].sort();
@@ -93,7 +96,7 @@ export function RosterBrowser({ characters }: { characters: CharacterItem[] }) {
   );
   return (
     <>
-      <div className="mb-4 grid gap-3 lg:grid-cols-[2fr_repeat(3,1fr)]">
+      <div className="mb-4 grid gap-3 lg:grid-cols-[2fr_repeat(4,1fr)]">
         <label className="relative">
           <Search size={16} className="absolute top-4 left-3 text-zinc-600" />
           <input
@@ -106,6 +109,7 @@ export function RosterBrowser({ characters }: { characters: CharacterItem[] }) {
         {select("alliance", ALLIANCES)}
         {select("rarity", RARITIES)}
         {select("priority", PRIORITIES)}
+        {select("unitType", UNIT_TYPES)}
       </div>
       <details className="mb-5 border border-white/10 bg-white/[.02] p-3">
         <summary className="cursor-pointer text-sm text-zinc-400">
@@ -215,6 +219,7 @@ export function RosterBrowser({ characters }: { characters: CharacterItem[] }) {
               <div className="mt-4 flex flex-wrap gap-2">
                 <Badge value={c.priority} />
                 <Badge value={c.investmentStatus} />
+                <Badge value={c.unitType} />
               </div>
               <p className="mt-4 text-xs text-zinc-500">
                 ★ {c.starLevel ?? "—"} · Active {c.activeAbilityLevel ?? "—"} ·
@@ -236,6 +241,7 @@ export function RosterBrowser({ characters }: { characters: CharacterItem[] }) {
                   "Level",
                   "Priority",
                   "Investment",
+                  "Unit type",
                 ].map((h) => (
                   <th className="p-3 font-medium" key={h}>
                     {h}
@@ -265,6 +271,9 @@ export function RosterBrowser({ characters }: { characters: CharacterItem[] }) {
                     <Badge value={c.priority} />
                   </td>
                   <td className="p-3">{label(c.investmentStatus)}</td>
+                  <td className="p-3">
+                    <Badge value={c.unitType} />
+                  </td>
                 </tr>
               ))}
             </tbody>

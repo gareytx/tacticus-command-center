@@ -19,15 +19,18 @@
 
 ## Phase 2C — Planning depth
 
-- Daily farming planner
-- Campaign progression tracker
-- Material inventory and bottleneck tracking
-- Badge and orb planning
+- [x] Evidence-aware upgrade readiness
+- [x] Character / Machine of War classification with unknown handling
+- [x] Resource taxonomy and inventory-pressure analysis
+- [x] Manual classification and readiness verification
+- [ ] Daily farming planner (requires verified recipes and locations)
+- [ ] Campaign progression tracker
+- [ ] Badge and orb demand planning (requires verified costs)
 - Mission tracking
-- Better recommendation scoring
+- [x] Transparent strategy-priority scoring
 - Campaign and event progress from supported sources
-- Upgrade-material analysis
-- Recommendation engine
+- [ ] Exact upgrade-material demand analysis
+- [x] Deterministic recommendation engine foundation
 - Daily Command Brief
 
 ## Phase 3 — Assisted capture

@@ -99,38 +99,87 @@ enum TacticusSyncStatus {
   FAILED
 }
 
+enum UnitType {
+  CHARACTER
+  MACHINE_OF_WAR
+  UNKNOWN
+}
+
+enum UnitTypeSource {
+  VERIFIED_MAPPING
+  MANUAL
+  UNKNOWN
+}
+
+enum UnitTypeConfidence {
+  CONFIRMED
+  HIGH
+  UNKNOWN
+}
+
+enum ResourceType {
+  EQUIPMENT
+  UPGRADE_MATERIAL
+  SHARD
+  MYTHIC_SHARD
+  XP_BOOK
+  ABILITY_BADGE
+  COMPONENT
+  FORGE_BADGE
+  ORB
+  REQUISITION_ORDER
+  RESET_STONE
+  UNKNOWN
+}
+
+enum ResourceSemanticStatus {
+  VERIFIED
+  PARTIAL
+  UNKNOWN
+}
+
+enum VerificationStatus {
+  VERIFIED
+  NOT_APPLICABLE
+  NEEDS_REVIEW
+}
+
 model Character {
-  id                   String            @id @default(cuid())
-  name                 String
-  slug                 String            @unique
-  faction              String
-  alliance             Alliance
-  rarity               Rarity?
-  starLevel            Int?
-  redStarLevel         Int?
-  characterLevel       Int?
-  rank                 Rank?
-  rankProgress         Int?
-  activeAbilityLevel   Int?
-  passiveAbilityLevel  Int?
-  shardsOwned          Int?
-  shardsRequired       Int?
-  mythicShardsOwned    Int?
-  externalCharacterId  String?           @unique
-  externalDefinitionId String?
-  syncSource           String?
-  lastSyncedAt         DateTime?
-  upstreamUpdatedAt    DateTime?
-  priority             Priority          @default(MEDIUM)
-  investmentStatus     InvestmentStatus  @default(MAINTAIN)
-  notes                String?
-  isOwned              Boolean           @default(true)
-  portraitUrl          String?
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
-  teamMembers          TeamMember[]
-  upgradeGoals         UpgradeGoal[]
-  changes              CharacterChange[]
+  id                     String                  @id @default(cuid())
+  name                   String
+  slug                   String                  @unique
+  faction                String
+  alliance               Alliance
+  rarity                 Rarity?
+  starLevel              Int?
+  redStarLevel           Int?
+  characterLevel         Int?
+  rank                   Rank?
+  rankProgress           Int?
+  activeAbilityLevel     Int?
+  passiveAbilityLevel    Int?
+  shardsOwned            Int?
+  shardsRequired         Int?
+  mythicShardsOwned      Int?
+  externalCharacterId    String?                 @unique
+  externalDefinitionId   String?
+  syncSource             String?
+  lastSyncedAt           DateTime?
+  upstreamUpdatedAt      DateTime?
+  unitType               UnitType                @default(UNKNOWN)
+  unitTypeSource         UnitTypeSource          @default(UNKNOWN)
+  unitTypeConfidence     UnitTypeConfidence      @default(UNKNOWN)
+  priority               Priority                @default(MEDIUM)
+  investmentStatus       InvestmentStatus        @default(MAINTAIN)
+  notes                  String?
+  isOwned                Boolean                 @default(true)
+  portraitUrl            String?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  teamMembers            TeamMember[]
+  upgradeGoals           UpgradeGoal[]
+  changes                CharacterChange[]
+  readinessVerifications ReadinessVerification[]
 
   @@index([lastSyncedAt])
 }
@@ -249,19 +298,39 @@ model TacticusSyncPreview {
 }
 
 model InventoryItem {
-  id                   String            @id @default(cuid())
-  externalInventoryId  String            @unique
+  id                   String                 @id @default(cuid())
+  externalInventoryId  String                 @unique
   displayName          String?
   category             String
+  resourceType         ResourceType           @default(UNKNOWN)
+  resourceSubtype      String?
+  allianceRestriction  String?
+  semanticStatus       ResourceSemanticStatus @default(UNKNOWN)
+  externalResourceId   String?
   rarity               String?
   quantity             Int
   upstreamMetadataJson String?
   lastSyncedAt         DateTime
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
   changes              InventoryChange[]
 
   @@index([lastSyncedAt])
+}
+
+model ReadinessVerification {
+  id              String             @id @default(cuid())
+  key             String             @unique
+  characterId     String?
+  opportunityType String
+  status          VerificationStatus @default(NEEDS_REVIEW)
+  note            String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  character       Character?         @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([characterId])
+  @@index([status])
 }
 
 model RosterSnapshot {

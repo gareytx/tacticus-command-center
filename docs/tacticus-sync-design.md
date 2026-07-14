@@ -41,3 +41,9 @@ The fixture contributes `id`, `name`, `faction`, `grandAlliance`, `xpLevel`, `ra
 ## Phase boundaries
 
 Phase 2B covers roster and inventory only. Campaign assignments derived from upstream progress, campaign completion, legendary events, guild data, and background polling remain intentionally unsupported.
+
+## Phase 2C enrichment
+
+Apply now enriches synchronized units through a source-controlled type catalog and inventory records through a centralized taxonomy. A record absent from the catalog remains `UNKNOWN`; payload shape is not used as a type heuristic. Sync skips all unit-type fields when their source is `MANUAL`, and never touches readiness verification records or local shard thresholds.
+
+The taxonomy describes resource identity and stock, not upgrade demand. Upstream category and metadata remain available for future reclassification. Existing databases receive the same conservative backfill through migrations, while `scripts/backfill-phase-2c.ts` provides an idempotent repair path using the current classifiers.

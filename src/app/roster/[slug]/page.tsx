@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Edit3, Trash2 } from "lucide-react";
 import { rosterRepository } from "@/data/repository";
-import { deleteCharacter } from "@/app/actions";
+import { deleteCharacter, setUnitClassification } from "@/app/actions";
 import { Badge, ButtonLink, PageHeader, Panel } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm-button";
 import { GoalForm } from "@/components/goal-form";
@@ -75,6 +75,7 @@ export default async function CharacterDetail({
               <Badge value={c.alliance} />
               <Badge value={c.priority} />
               <Badge value={c.investmentStatus} />
+              <Badge value={c.unitType} />
             </div>
             <div className="grid gap-px bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
               {stats.map(([name, value]) => (
@@ -155,6 +156,32 @@ export default async function CharacterDetail({
                 <GoalForm characterId={c.id} characterSlug={c.slug} />
               </div>
             </details>
+          </Panel>
+          <Panel>
+            <h2 className="mb-2 text-lg font-semibold">Unit classification</h2>
+            <p className="mb-3 text-xs text-zinc-500">
+              {label(c.unitTypeSource)} · {label(c.unitTypeConfidence)}{" "}
+              confidence. A manual choice is preserved during future syncs.
+            </p>
+            <form
+              action={setUnitClassification.bind(null, c.id, c.slug)}
+              className="flex gap-2"
+            >
+              <select
+                name="unitType"
+                defaultValue={c.unitType}
+                className="min-w-0 flex-1 border border-white/10 bg-[#0b1012] p-2 text-sm"
+              >
+                {["CHARACTER", "MACHINE_OF_WAR", "UNKNOWN"].map((v) => (
+                  <option key={v} value={v}>
+                    {label(v)}
+                  </option>
+                ))}
+              </select>
+              <button className="border border-amber-300/40 px-3 text-sm text-amber-300">
+                Save
+              </button>
+            </form>
           </Panel>
           <Panel>
             <p className="text-xs leading-5 text-zinc-600">

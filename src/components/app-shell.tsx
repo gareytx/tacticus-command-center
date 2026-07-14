@@ -6,11 +6,13 @@ import {
   Shield,
   Target,
   Users,
+  Gauge,
 } from "lucide-react";
 
 const links = [
   ["/", "Dashboard", BarChart3],
   ["/roster", "Roster", Shield],
+  ["/readiness", "Readiness", Gauge],
   ["/priorities", "Priorities", Target],
   ["/teams", "Teams", Users],
   ["/settings", "Data", Database],

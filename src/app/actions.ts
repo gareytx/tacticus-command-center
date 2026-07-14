@@ -10,6 +10,7 @@ import {
 } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 function clean(formData: FormData) {
   return Object.fromEntries(
@@ -45,6 +46,28 @@ export async function deleteCharacter(id: string) {
   revalidatePath("/");
   revalidatePath("/roster");
   redirect("/roster");
+}
+
+export async function setUnitClassification(
+  id: string,
+  slug: string,
+  formData: FormData,
+) {
+  const unitType = z
+    .enum(["CHARACTER", "MACHINE_OF_WAR", "UNKNOWN"])
+    .parse(formData.get("unitType"));
+  await db.character.update({
+    where: { id },
+    data: {
+      unitType,
+      unitTypeSource: "MANUAL",
+      unitTypeConfidence: "CONFIRMED",
+    },
+  });
+  revalidatePath("/");
+  revalidatePath("/roster");
+  revalidatePath(`/roster/${slug}`);
+  revalidatePath("/readiness");
 }
 
 export async function saveGoal(formData: FormData) {
@@ -136,6 +159,9 @@ export async function resetDemoData() {
       priority: "MEDIUM" as const,
       investmentStatus: "MAINTAIN" as const,
       isOwned: true,
+      unitType: "CHARACTER" as const,
+      unitTypeSource: "MANUAL" as const,
+      unitTypeConfidence: "CONFIRMED" as const,
       notes: "Seeded record — update unknown stats when available.",
     })),
   });

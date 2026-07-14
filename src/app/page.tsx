@@ -26,7 +26,12 @@ export default async function Dashboard() {
         include: { character: true },
       }),
     ]);
-  const owned = characters.filter((c) => c.isOwned);
+  const allOwned = characters.filter((c) => c.isOwned);
+  const owned = allOwned.filter((c) => c.unitType === "CHARACTER");
+  const machines = allOwned.filter(
+    (c) => c.unitType === "MACHINE_OF_WAR",
+  ).length;
+  const unknownUnits = allOwned.filter((c) => c.unitType === "UNKNOWN").length;
   const priorityCount = owned.filter((c) =>
     ["CRITICAL", "HIGH"].includes(c.priority),
   ).length;
@@ -60,9 +65,9 @@ export default async function Dashboard() {
       />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Panel>
-          <Stat label="Owned units" value={owned.length} accent />
+          <Stat label="Owned characters" value={owned.length} accent />
           <p className="mt-3 text-xs text-zinc-500">
-            {characters.length} total records
+            {machines} Machines of War · {unknownUnits} unknown
           </p>
         </Panel>
         <Panel>
@@ -209,6 +214,7 @@ export default async function Dashboard() {
             {[
               ["/roster/new", "Add a character", Plus],
               ["/priorities", "View priorities", Target],
+              ["/readiness", "Review readiness", Target],
               ["/teams", "Manage teams", Users],
               ["/api/export", "Export roster", Database],
             ].map(([href, name, Icon]) => (

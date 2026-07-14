@@ -67,6 +67,7 @@ export const GOAL_STATUSES = [
   "COMPLETED",
   "CANCELLED",
 ] as const;
+export const UNIT_TYPES = ["CHARACTER", "MACHINE_OF_WAR", "UNKNOWN"] as const;
 
 export function label(value: string | null | undefined) {
   if (!value) return "Unknown";

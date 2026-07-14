@@ -26,6 +26,9 @@ async function main() {
         priority: "MEDIUM",
         investmentStatus: "MAINTAIN",
         isOwned: true,
+        unitType: "CHARACTER",
+        unitTypeSource: "MANUAL",
+        unitTypeConfidence: "CONFIRMED",
         notes: "Seeded record — update unknown stats when available.",
       },
     });
